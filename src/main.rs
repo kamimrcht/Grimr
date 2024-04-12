@@ -1,3 +1,6 @@
+#![allow(incomplete_features)]
+#![feature(generic_const_exprs)]
+
 use cbl::CBL;
 use needletail::parse_fastx_file;
 use std::env;
