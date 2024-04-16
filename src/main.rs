@@ -13,32 +13,23 @@ use std::path::Path;
 type T = u64;
 const K: usize = 21;
 
-// parse Florian's input //todo deal with empty lists
+// parse input query file
 fn parse_line(line: &str) -> Vec<i32> {
-    line.trim_matches(|p| p == '[' || p == ']')
-        .split(',')
-        .filter_map(|s| s.trim().parse::<i32>().ok())
-        .collect()
+    line.split('\t').last().unwrap_or("").trim_matches(|p| p == '[' || p == ']').split(',').filter_map(|s| s.trim().parse::<i32>().ok()).collect() 
 }
 
 fn parse_list_of_lists(line: &str) -> Vec<Vec<i32>> {
-    line.trim_matches(|p| p == '[' || p == ']')
-        .split("],[")
-        .map(parse_line)
-        .collect()
+    line.split('\t').last().unwrap_or("").trim_matches(|p| p == '[' || p == ']').split("],[").map(parse_line).collect() 
 }
 
 fn parse_file<P: AsRef<Path>>(
     path: P,
-) -> io::Result<(Vec<i32>, Vec<i32>, Vec<Vec<i32>>, Vec<Vec<i32>>)> {
+) -> io::Result<(Vec<i32>, Vec<Vec<i32>>, Vec<Vec<i32>>, Vec<i32>)> {
     let file = File::open(path)?;
     let reader = BufReader::new(file);
     let mut lines = reader.lines();
 
     let list1 = lines
-        .next()
-        .map_or(Ok(vec![]), |l| l.map(|line| parse_line(&line)))?;
-    let list2 = lines
         .next()
         .map_or(Ok(vec![]), |l| l.map(|line| parse_line(&line)))?;
     let list_of_lists1 = lines
@@ -47,24 +38,29 @@ fn parse_file<P: AsRef<Path>>(
     let list_of_lists2 = lines
         .next()
         .map_or(Ok(vec![]), |l| l.map(|line| parse_list_of_lists(&line)))?;
-
-    Ok((list1, list2, list_of_lists1, list_of_lists2))
+    let list2 = lines
+        .next()
+        .map_or(Ok(vec![]), |l| l.map(|line| parse_line(&line)))?;
+    Ok((list1, list_of_lists1, list_of_lists2, list2))
 }
 
 // reads fastas from a file of file
-fn read_fof_file(file_path: &str) -> io::Result<(Vec<String>, usize)> {
+fn read_fof_file_csv(file_path: &str) -> io::Result<(Vec<String>, usize)> {
     let file = File::open(file_path)?;
     let reader = BufReader::new(file);
-    let mut file_paths = Vec::new();
+    let mut file_paths = Vec::new(); 
     let mut color_number = 0;
+
     for line in reader.lines() {
         let line = line?;
-        file_paths.push(line.trim().to_string());
-        color_number += 1;
+        if let Some(first_column) = line.split_whitespace().next() {
+            file_paths.push(first_column.to_string());
+            color_number += 1;
+        }
     }
+
     Ok((file_paths, color_number))
 }
-
 // create and serialize cbls
 fn create_and_serialize_cbls(input_files: Vec<String>, output_dir: &str) {
     // dir where serialized cbls are stored
@@ -209,12 +205,12 @@ fn main() {
 
     if mode == "index" {
         // read the fof
-        let (input_files, _col_nb) = read_fof_file(&input_file_list).unwrap(); // use of col_nb?
+        let (input_files, _col_nb) = read_fof_file_csv(&input_file_list).unwrap(); // use of col_nb?
                                                                                // create and serialize CBLs
         create_and_serialize_cbls(input_files, output_dir);
     } else if mode == "query" {
         let labels = parse_file(label_file_list).unwrap();
-        let (Acup, Dcup, Bstar, Cstar) = labels;
+        let (Acup, Bstar, Cstar, Dcup) = labels;
         let cbl = query_cbls(Acup, Bstar, Cstar, Dcup, output_dir);
         //todo dump fasta
     }
@@ -225,25 +221,25 @@ mod tests {
     use super::*;
     #[test]
     fn test_parse_line() {
-        assert_eq!(parse_line("[1,2,3]"), vec![1, 2, 3]);
-        assert_eq!(parse_line("[ 1 , 2 , 3 ]"), vec![1, 2, 3]);
-        assert_eq!(parse_line("[]"), vec![]);
-        assert_eq!(parse_line("[[],[]]"), vec![]);
-        assert_eq!(parse_line("[100]"), vec![100]);
+        assert_eq!(parse_line("A	ALL	[1,2,3]"), vec![1, 2, 3]);
+        assert_eq!(parse_line("A	ALL	[ 1 , 2 , 3 ]"), vec![1, 2, 3]);
+        assert_eq!(parse_line("A	ALL	[]"), vec![]);
+        assert_eq!(parse_line("B	ANY	[[],[]]"), vec![]);
+        assert_eq!(parse_line("A	ALL	[100]"), vec![100]);
     }
 
     #[test]
-    fn test_read_fof_file() {
-        let result = read_fof_file("test_files/fof.txt").unwrap();
+    fn test_read_fof_file_csv() {
+        let result = read_fof_file_csv("test_files/metadata.csv").unwrap();
         assert_eq!(
             result.0,
             vec![
-                "test1.fa".to_string(),
-                "test2.fa".to_string(),
-                "test3.fa".to_string(),
-                "test4.fa".to_string(),
-                "test5.fa".to_string(),
-                "test6.fa".to_string()
+                "test_files/test1.fa".to_string(),
+                "test_files/test2.fa".to_string(),
+                "test_files/test3.fa".to_string(),
+                "test_files/test4.fa".to_string(),
+                "test_files/test5.fa".to_string(),
+                "test_files/test6.fa".to_string()
             ]
         );
         assert_eq!(result.1, 6);
