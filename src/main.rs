@@ -7,8 +7,9 @@ use cbl::CBL;
 use needletail::parse_fastx_file;
 use std::env;
 use std::fs::{self, File};
-use std::io::{self, BufRead, BufReader};
+use std::io::{self, BufRead, BufReader, BufWriter, Write, Result};
 use std::path::Path;
+use cbl::kmer::Kmer;
 
 type T = u64;
 const K: usize = 21;
@@ -111,13 +112,7 @@ fn find_smallest_vec_and_index(list_of_vecs: &[Vec<i32>]) -> (usize, Vec<i32>) {
     (smallest_index, smallest_vec)
 }
 
-fn query_cbls(
-    Acup: Vec<i32>,
-    Bstar: Vec<Vec<i32>>,
-    Cstar: Vec<Vec<i32>>,
-    Dcup: Vec<i32>,
-    output_dir: &str,
-) -> CBL<K, T> {
+fn query_cbls(Acup: Vec<i32>, Bstar: Vec<Vec<i32>>, Cstar: Vec<Vec<i32>>, Dcup: Vec<i32>, output_dir: &str,) -> CBL<K, T> {
     // load cbls and build union for A cup and D cup
 
     let mut global_cbl = CBL::<K, T>::new();
@@ -191,6 +186,25 @@ fn query_cbls(
     returned_cbl
 }
 
+
+fn cbl_printer(cbl: &CBL<K, T>) -> std::io::Result<()> {
+    if cbl.is_empty() {
+		println!("Empty solution.");
+        return Ok(());  
+    }
+
+    let file = File::create("output_anti_reindeer.fasta")?;
+    let mut writer = BufWriter::new(file);
+	for (index, kmer) in cbl.iter().enumerate() {
+        let nuc_array = kmer.to_nucs();
+        let slice_nuc = nuc_array.as_slice(); 
+        let nucs = String::from_utf8_lossy(slice_nuc); // @Igor, meilleure manière de faire?
+        writeln!(writer, ">kmer{}", index)?;
+        writeln!(writer, "{}", nucs)?;
+    }
+    Ok(())
+}
+
 fn main() {
     // parse args
     let args: Vec<String> = env::args().collect();
@@ -212,7 +226,7 @@ fn main() {
         let labels = parse_file(label_file_list).unwrap();
         let (Acup, Bstar, Cstar, Dcup) = labels;
         let cbl = query_cbls(Acup, Bstar, Cstar, Dcup, output_dir);
-        //todo dump fasta
+        cbl_printer(&cbl);
     }
 }
 
