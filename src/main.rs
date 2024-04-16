@@ -187,13 +187,13 @@ fn query_cbls(Acup: Vec<i32>, Bstar: Vec<Vec<i32>>, Cstar: Vec<Vec<i32>>, Dcup: 
 }
 
 
-fn cbl_printer(cbl: &CBL<K, T>) -> std::io::Result<()> {
+fn cbl_printer(cbl: &CBL<K, T>, output_path:&str) -> std::io::Result<()> {
     if cbl.is_empty() {
 		println!("Empty solution.");
         return Ok(());  
     }
 
-    let file = File::create("output_anti_reindeer.fasta")?;
+    let file = File::create(output_path)?;
     let mut writer = BufWriter::new(file);
 	for (index, kmer) in cbl.iter().enumerate() {
         let nuc_array = kmer.to_nucs();
@@ -226,7 +226,10 @@ fn main() {
         let labels = parse_file(label_file_list).unwrap();
         let (Acup, Bstar, Cstar, Dcup) = labels;
         let cbl = query_cbls(Acup, Bstar, Cstar, Dcup, output_dir);
-        cbl_printer(&cbl);
+		let output_path = "output_anti_reindeer_query.txt";
+   		let _ = fs::remove_file(output_path);
+
+        cbl_printer(&cbl, output_path);
     }
 }
 
@@ -290,4 +293,32 @@ mod tests {
         assert_eq!(index, 0);
         assert_eq!(smallest_vec, vec![1, 2]);
     }
+    
+    #[test]
+    fn test_printer() {
+		let mut cbl_a = deserialize_cbl(0, "test_files");
+		let output_path = "test_files/test_printer.fa";
+		let _ = fs::remove_file(output_path);
+		cbl_printer(&cbl_a, output_path).unwrap();
+		assert!(Path::new(output_path).exists(), "The file was not created.");
+		let file = File::open(output_path).expect("Failed to open file");
+		let reader = BufReader::new(file);
+		let mut lines = reader.lines();
+		
+		let expected_lines = vec![
+        ">kmer0", "CTAAAAAACCGTCAATGTGAA",
+        ">kmer1", "TAAAAAACCGTCAATGTGAAA",
+        ">kmer2", "AAACTGGAACGGTTAGAGAAA",
+        ">kmer3", "AAAAAGACGGACAAGAAGCGA",
+        ">kmer4", "TGCAGTTAAAAAGCTCGTAGT",
+        ">kmer5", "GCAGTTAAAAAGCTCGTAGTT",
+		];
+		for expected_line in expected_lines.iter() {
+        if let Some(Ok(actual_line)) = lines.next() {
+            assert_eq!(actual_line, *expected_line, "Mismatch in file content at expected line: {}", expected_line);
+        } else {
+            panic!("File has fewer lines than expected");
+        }
+    }
+	}
 }
