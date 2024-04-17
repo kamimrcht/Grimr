@@ -2,7 +2,11 @@
 
 ```sh
 git clone https://github.com/kamimrcht/anti_reindeer.git
-cargo +nightly build
+cd anti_reindeer
+```
+
+```sh
+cargo +nightly build --release
 cargo +nightly test
 ```
 
