@@ -15,13 +15,21 @@ To install Rust nightly: [rustup.rs](https://rustup.rs/) then `rustup install ni
 ## Index mode
 
 ```sh
-cargo +nightly run --release -- index test_files/fof.txt test_files/input_florian.txt
+cd test_files
+```
+
+```sh
+cargo +nightly run --release -- index fof.txt input_florian.txt
 ```
 
 ## Query mode
 
 ```sh
-cargo +nightly run --release -- query test_files/fof.txt test_files/input_florian.txt
+cd test_files
+```
+
+```sh
+cargo +nightly run --release -- query fof.txt input_florian.txt
 ```
 
 ## Useful commands
