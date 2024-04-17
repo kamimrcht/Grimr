@@ -3,24 +3,36 @@
 #![allow(clippy::type_complexity)]
 
 use bincode::{deserialize, serialize};
+use cbl::kmer::Kmer;
 use cbl::CBL;
 use needletail::parse_fastx_file;
 use std::env;
 use std::fs::{self, File};
-use std::io::{self, BufRead, BufReader, BufWriter, Write, Result};
+use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
-use cbl::kmer::Kmer;
 
 type T = u64;
 const K: usize = 21;
 
 // parse input query file
 fn parse_line(line: &str) -> Vec<i32> {
-    line.split('\t').last().unwrap_or("").trim_matches(|p| p == '[' || p == ']').split(',').filter_map(|s| s.trim().parse::<i32>().ok()).collect() 
+    line.split('\t')
+        .last()
+        .unwrap_or("")
+        .trim_matches(|p| p == '[' || p == ']')
+        .split(',')
+        .filter_map(|s| s.trim().parse::<i32>().ok())
+        .collect()
 }
 
 fn parse_list_of_lists(line: &str) -> Vec<Vec<i32>> {
-    line.split('\t').last().unwrap_or("").trim_matches(|p| p == '[' || p == ']').split("],[").map(parse_line).collect() 
+    line.split('\t')
+        .last()
+        .unwrap_or("")
+        .trim_matches(|p| p == '[' || p == ']')
+        .split("],[")
+        .map(parse_line)
+        .collect()
 }
 
 fn parse_file<P: AsRef<Path>>(
@@ -49,7 +61,7 @@ fn parse_file<P: AsRef<Path>>(
 fn read_fof_file_csv(file_path: &str) -> io::Result<(Vec<String>, usize)> {
     let file = File::open(file_path)?;
     let reader = BufReader::new(file);
-    let mut file_paths = Vec::new(); 
+    let mut file_paths = Vec::new();
     let mut color_number = 0;
 
     for line in reader.lines() {
@@ -91,7 +103,7 @@ fn deserialize_cbl(input_index: i32, output_dir: &str) -> CBL<K, T> {
     deserialized_cbl
 }
 
-// smallest vec for Bstar
+// smallest vec for b_star
 fn find_smallest_vec_and_index(list_of_vecs: &[Vec<i32>]) -> (usize, Vec<i32>) {
     let mut smallest_index = 0;
     let mut smallest_vec = Vec::new();
@@ -112,36 +124,42 @@ fn find_smallest_vec_and_index(list_of_vecs: &[Vec<i32>]) -> (usize, Vec<i32>) {
     (smallest_index, smallest_vec)
 }
 
-fn query_cbls(Acup: Vec<i32>, Bstar: Vec<Vec<i32>>, Cstar: Vec<Vec<i32>>, Dcup: Vec<i32>, output_dir: &str,) -> CBL<K, T> {
+fn query_cbls(
+    a_cup: Vec<i32>,
+    b_star: Vec<Vec<i32>>,
+    c_star: Vec<Vec<i32>>,
+    d_cup: Vec<i32>,
+    output_dir: &str,
+) -> CBL<K, T> {
     // load cbls and build union for A cup and D cup
 
     let mut global_cbl = CBL::<K, T>::new();
     let mut returned_cbl = CBL::<K, T>::new();
 
-    let mut Bstar_work = Bstar.clone();
-    if Acup.is_empty() {
-        if Bstar.is_empty() {
+    let mut b_star_work = b_star.clone();
+    if a_cup.is_empty() {
+        if b_star.is_empty() {
             println!("Warning: a putatively large union operation is needed for this query.");
             // union all
-            for index in Acup {
+            for index in a_cup {
                 let mut cbl_a = deserialize_cbl(index, output_dir);
                 global_cbl |= &mut cbl_a;
             }
-            for C in &Cstar {
-                for index in C {
+            for c in &c_star {
+                for index in c {
                     let mut cbl_c = deserialize_cbl(*index, output_dir);
                     global_cbl |= &mut cbl_c;
                 }
             }
-            for index in &Dcup {
+            for index in &d_cup {
                 let mut cbl_d = deserialize_cbl(*index, output_dir);
                 global_cbl |= &mut cbl_d;
             }
         } else {
-            let (ind, smallest_vecB) = find_smallest_vec_and_index(&Bstar_work);
-            Bstar_work.remove(ind); // remove smallest B from B*
+            let (ind, smallest_vec_b) = find_smallest_vec_and_index(&b_star_work);
+            b_star_work.remove(ind); // remove smallest b from b*
             let mut local_cbl = CBL::<K, T>::new();
-            for index in smallest_vecB {
+            for index in smallest_vec_b {
                 let mut cbl_b = deserialize_cbl(index, output_dir);
                 local_cbl |= &mut cbl_b;
             }
@@ -149,7 +167,7 @@ fn query_cbls(Acup: Vec<i32>, Bstar: Vec<Vec<i32>>, Cstar: Vec<Vec<i32>>, Dcup: 
         }
     } else {
         let mut local_cbl = CBL::<K, T>::new();
-        for (i, index) in Acup.iter().enumerate() {
+        for (i, index) in a_cup.iter().enumerate() {
             if i == 0 {
                 local_cbl = deserialize_cbl(*index, output_dir);
             } else {
@@ -159,22 +177,22 @@ fn query_cbls(Acup: Vec<i32>, Bstar: Vec<Vec<i32>>, Cstar: Vec<Vec<i32>>, Dcup: 
         }
         global_cbl |= &mut local_cbl; // clone
     }
-    for C in &Cstar {
+    for c in &c_star {
         let mut local_cbl = CBL::<K, T>::new();
         local_cbl |= &mut global_cbl;
-        for index in C {
+        for index in c {
             let mut cbl_c = deserialize_cbl(*index, output_dir);
             local_cbl &= &mut cbl_c;
         }
         global_cbl -= &mut local_cbl;
     }
-    for index in &Dcup {
+    for index in &d_cup {
         let mut cbl_d = deserialize_cbl(*index, output_dir);
         global_cbl -= &mut cbl_d;
     }
-    for B in Bstar_work {
+    for b in b_star_work {
         let mut local_cbl = CBL::<K, T>::new();
-        for index in B {
+        for index in b {
             let mut cbl_b = deserialize_cbl(index, output_dir);
             let mut cbl_tmp = CBL::<K, T>::new();
             cbl_tmp |= &mut global_cbl; // "clone"
@@ -186,18 +204,17 @@ fn query_cbls(Acup: Vec<i32>, Bstar: Vec<Vec<i32>>, Cstar: Vec<Vec<i32>>, Dcup: 
     returned_cbl
 }
 
-
-fn cbl_printer(cbl: &CBL<K, T>, output_path:&str) -> std::io::Result<()> {
+fn cbl_printer(cbl: &CBL<K, T>, output_path: &str) -> std::io::Result<()> {
     if cbl.is_empty() {
-		println!("Empty solution.");
-        return Ok(());  
+        println!("Empty solution.");
+        return Ok(());
     }
 
     let file = File::create(output_path)?;
     let mut writer = BufWriter::new(file);
-	for (index, kmer) in cbl.iter().enumerate() {
+    for (index, kmer) in cbl.iter().enumerate() {
         let nuc_array = kmer.to_nucs();
-        let slice_nuc = nuc_array.as_slice(); 
+        let slice_nuc = nuc_array.as_slice();
         let nucs = String::from_utf8_lossy(slice_nuc); // @Igor, meilleure manière de faire?
         writeln!(writer, ">kmer{}", index)?;
         writeln!(writer, "{}", nucs)?;
@@ -220,16 +237,15 @@ fn main() {
     if mode == "index" {
         // read the fof
         let (input_files, _col_nb) = read_fof_file_csv(&input_file_list).unwrap(); // use of col_nb?
-                                                                               // create and serialize CBLs
+                                                                                   // create and serialize CBLs
         create_and_serialize_cbls(input_files, output_dir);
     } else if mode == "query" {
         let labels = parse_file(label_file_list).unwrap();
-        let (Acup, Bstar, Cstar, Dcup) = labels;
-        let cbl = query_cbls(Acup, Bstar, Cstar, Dcup, output_dir);
-		let output_path = "output_anti_reindeer_query.txt";
-   		let _ = fs::remove_file(output_path);
-
-        cbl_printer(&cbl, output_path);
+        let (a_cup, b_star, c_star, d_cup) = labels;
+        let cbl = query_cbls(a_cup, b_star, c_star, d_cup, output_dir);
+        let output_path = "output_anti_reindeer_query.txt";
+        let _ = fs::remove_file(output_path);
+        cbl_printer(&cbl, output_path).expect("Failed to print CBL");
     }
 }
 
@@ -241,7 +257,7 @@ mod tests {
         assert_eq!(parse_line("A	ALL	[1,2,3]"), vec![1, 2, 3]);
         assert_eq!(parse_line("A	ALL	[ 1 , 2 , 3 ]"), vec![1, 2, 3]);
         assert_eq!(parse_line("A	ALL	[]"), vec![]);
-        assert_eq!(parse_line("B	ANY	[[],[]]"), vec![]);
+        assert_eq!(parse_line("b	ANY	[[],[]]"), vec![]);
         assert_eq!(parse_line("A	ALL	[100]"), vec![100]);
     }
 
@@ -293,32 +309,42 @@ mod tests {
         assert_eq!(index, 0);
         assert_eq!(smallest_vec, vec![1, 2]);
     }
-    
+
     #[test]
     fn test_printer() {
-		let mut cbl_a = deserialize_cbl(0, "test_files");
-		let output_path = "test_files/test_printer.fa";
-		let _ = fs::remove_file(output_path);
-		cbl_printer(&cbl_a, output_path).unwrap();
-		assert!(Path::new(output_path).exists(), "The file was not created.");
-		let file = File::open(output_path).expect("Failed to open file");
-		let reader = BufReader::new(file);
-		let mut lines = reader.lines();
-		
-		let expected_lines = vec![
-        ">kmer0", "CTAAAAAACCGTCAATGTGAA",
-        ">kmer1", "TAAAAAACCGTCAATGTGAAA",
-        ">kmer2", "AAACTGGAACGGTTAGAGAAA",
-        ">kmer3", "AAAAAGACGGACAAGAAGCGA",
-        ">kmer4", "TGCAGTTAAAAAGCTCGTAGT",
-        ">kmer5", "GCAGTTAAAAAGCTCGTAGTT",
-		];
-		for expected_line in expected_lines.iter() {
-        if let Some(Ok(actual_line)) = lines.next() {
-            assert_eq!(actual_line, *expected_line, "Mismatch in file content at expected line: {}", expected_line);
-        } else {
-            panic!("File has fewer lines than expected");
+        let cbl_a = deserialize_cbl(0, "test_files");
+        let output_path = "test_files/test_printer.fa";
+        let _ = fs::remove_file(output_path);
+        cbl_printer(&cbl_a, output_path).unwrap();
+        assert!(Path::new(output_path).exists(), "The file was not created.");
+        let file = File::open(output_path).expect("Failed to open file");
+        let reader = BufReader::new(file);
+        let mut lines = reader.lines();
+
+        let expected_lines = [
+            ">kmer0",
+            "CTAAAAAACCGTCAATGTGAA",
+            ">kmer1",
+            "TAAAAAACCGTCAATGTGAAA",
+            ">kmer2",
+            "AAACTGGAACGGTTAGAGAAA",
+            ">kmer3",
+            "AAAAAGACGGACAAGAAGCGA",
+            ">kmer4",
+            "TGCAGTTAAAAAGCTCGTAGT",
+            ">kmer5",
+            "GCAGTTAAAAAGCTCGTAGTT",
+        ];
+        for expected_line in expected_lines.iter() {
+            if let Some(Ok(actual_line)) = lines.next() {
+                assert_eq!(
+                    actual_line, *expected_line,
+                    "Mismatch in file content at expected line: {}",
+                    expected_line
+                );
+            } else {
+                panic!("File has fewer lines than expected");
+            }
         }
     }
-	}
 }
