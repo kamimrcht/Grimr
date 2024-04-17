@@ -76,29 +76,45 @@ fn read_fof_file_csv(file_path: &str) -> io::Result<(Vec<String>, usize)> {
     Ok((file_paths, color_number))
 }
 // create and serialize cbls
-fn create_and_serialize_cbls(input_files: Vec<String>, output_dir: &str) {
+fn create_and_serialize_cbls(input_files: Vec<String>, output_dir: &str,a_cup: Vec<i32>,
+    b_star: Vec<Vec<i32>>,
+    c_star: Vec<Vec<i32>>,
+    d_cup: Vec<i32>,) {
     // dir where serialized cbls are stored
     fs::create_dir_all(output_dir).unwrap();
 
-    // for each fasta i of the fof, create a cbl
-    for (i, input_filename) in input_files.iter().enumerate() {
-        let mut reader = parse_fastx_file(input_filename).unwrap();
-        let mut cbl = CBL::<K, T>::new();
-        while let Some(record) = reader.next() { //todo create cbls only if needed (all if a, b empty, else, only indexes that appear)
-            let seqrec = record.expect("Invalid record");
-            cbl.insert_seq(&seqrec.seq());
-        }
+    //  create cbls only if needed (all if a, b empty, else, only indexes that appear)
+    let to_load = Vec<>;
+    if (a_cup.is_empty() & b_star.is_empty() { //load everything
+		to_load = input_files.clone();
+	} else {
+		 let mut to_load_id = create_unique_vec(a_cup.clone(), b_star.clone(), c_star.clone(), d_cup.clone()); // load only necessary datasets
+		 to_load_id.sort();
+		 for (i, input_filename) in input_files.iter().enumerate() {
+			 if i in to_load_id {
+				to_load.insert(input_filename);
+			 }
+		 }
+	}
+	for (i, input_filename) in to_load.iter().enumerate() {
+		let mut reader = parse_fastx_file(input_filename).unwrap();
+		let mut cbl = CBL::<K, T>::new();
+		while let Some(record) = reader.next() {
+			let seqrec = record.expect("Invalid record");
+			cbl.insert_seq(&seqrec.seq());
+		}
 
-        // serialize the cbl and save it to a file
-        let output_filename = format!("{}/{}.cbl", output_dir, i);
-        let output = File::create(output_filename).unwrap();
-        let mut writer = BufWriter::new(output);
-        DefaultOptions::new()
-            .with_varint_encoding()
-            .reject_trailing_bytes()
-            .serialize_into(&mut writer, &cbl)
-            .unwrap();
-    }
+		// serialize the cbl and save it to a file
+		let output_filename = format!("{}/{}.cbl", output_dir, i);
+		let output = File::create(output_filename).unwrap();
+		let mut writer = BufWriter::new(output);
+		DefaultOptions::new()
+			.with_varint_encoding()
+			.reject_trailing_bytes()
+			.serialize_into(&mut writer, &cbl)
+			.unwrap();
+	}
+
 }
 
 // deserialize a given CBL
@@ -274,15 +290,15 @@ fn main() {
     let input_file_list = args[2].clone();
     let label_file_list = args[3].clone();
     let output_dir = "serialized_cbls";
+	let labels = parse_file(label_file_list).unwrap();
+    let (a_cup, b_star, c_star, d_cup) = labels;
 
     if mode == "index" {
         // read the fof
-        let (input_files, _col_nb) = read_fof_file_csv(&input_file_list).unwrap(); // use of col_nb?
+        let (input_files, _col_nb) = read_fof_file_csv(&input_file_list, labels).unwrap(); // use of col_nb?
                                                                                    // create and serialize CBLs
         create_and_serialize_cbls(input_files, output_dir);
     } else if mode == "query" {
-        let labels = parse_file(label_file_list).unwrap();
-        let (a_cup, b_star, c_star, d_cup) = labels;
         let cbl = query_cbls(a_cup, b_star, c_star, d_cup, output_dir);
         let output_path = "output_anti_reindeer_query.txt";
         let _ = fs::remove_file(output_path);
