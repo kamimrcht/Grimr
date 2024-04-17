@@ -5,12 +5,12 @@ git clone https://github.com/kamimrcht/anti_reindeer.git
 cd anti_reindeer
 ```
 
+Install Rust nightly: [rustup.rs](https://rustup.rs/) then `rustup install nightly`.
+
 ```sh
 cargo +nightly build --release
 cargo +nightly test
 ```
-
-To install Rust nightly: [rustup.rs](https://rustup.rs/) then `rustup install nightly`.
 
 ## Index mode
 
