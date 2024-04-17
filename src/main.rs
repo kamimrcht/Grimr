@@ -2,7 +2,7 @@
 #![feature(generic_const_exprs)]
 #![allow(clippy::type_complexity)]
 
-use bincode::{deserialize, serialize};
+use bincode::{DefaultOptions, Options};
 use cbl::kmer::Kmer;
 use cbl::CBL;
 use needletail::parse_fastx_file;
@@ -89,18 +89,28 @@ fn create_and_serialize_cbls(input_files: Vec<String>, output_dir: &str) {
         }
 
         // serialize the cbl and save it to a file
-        let serialized_cbl = serialize(&cbl).unwrap();
         let output_filename = format!("{}/{}.cbl", output_dir, i);
-        fs::write(Path::new(&output_filename), &serialized_cbl).unwrap();
+        let output = File::create(output_filename).unwrap();
+        let mut writer = BufWriter::new(output);
+        DefaultOptions::new()
+            .with_varint_encoding()
+            .reject_trailing_bytes()
+            .serialize_into(&mut writer, &cbl)
+            .unwrap();
     }
 }
 
 // deserialize a given CBL
 fn deserialize_cbl(input_index: i32, output_dir: &str) -> CBL<K, T> {
-    let input_path = format!("{}/{}.cbl", output_dir, input_index);
-    let data = fs::read(Path::new(&input_path)).unwrap();
-    let deserialized_cbl: CBL<K, T> = deserialize(&data).unwrap();
-    deserialized_cbl
+    let input_filename = format!("{}/{}.cbl", output_dir, input_index);
+    let index = File::open(input_filename.as_str())
+        .unwrap_or_else(|_| panic!("Failed to open {}", input_filename.as_str()));
+    let reader = BufReader::new(index);
+    DefaultOptions::new()
+        .with_varint_encoding()
+        .reject_trailing_bytes()
+        .deserialize_from(reader)
+        .unwrap()
 }
 
 // smallest vec for b_star
