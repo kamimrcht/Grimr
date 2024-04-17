@@ -209,15 +209,12 @@ fn cbl_printer(cbl: &CBL<K, T>, output_path: &str) -> std::io::Result<()> {
         println!("Empty solution.");
         return Ok(());
     }
-
     let file = File::create(output_path)?;
     let mut writer = BufWriter::new(file);
     for (index, kmer) in cbl.iter().enumerate() {
-        let nuc_array = kmer.to_nucs();
-        let slice_nuc = nuc_array.as_slice();
-        let nucs = String::from_utf8_lossy(slice_nuc); // @Igor, meilleure manière de faire?
         writeln!(writer, ">kmer{}", index)?;
-        writeln!(writer, "{}", nucs)?;
+        writer.write_all(&kmer.to_nucs())?;
+        writer.write_all(b"\n")?;
     }
     Ok(())
 }
