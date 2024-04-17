@@ -117,18 +117,19 @@ fn deserialize_cbl(input_index: i32, output_dir: &str) -> CBL<K, T> {
 fn find_smallest_vec_and_index(list_of_vecs: &[Vec<i32>]) -> (usize, Vec<i32>) {
     let mut smallest_index = 0;
     let mut smallest_vec = Vec::new();
+    let mut smallest_len = usize::MAX; 
 
-    if !list_of_vecs.is_empty() {
-        smallest_vec.clone_from(&list_of_vecs[0]);
-        let mut smallest_len = smallest_vec.len();
-
-        for (index, vec) in list_of_vecs.iter().enumerate() {
-            if vec.len() < smallest_len {
-                smallest_index = index;
-                smallest_vec.clone_from(vec);
-                smallest_len = vec.len();
-            }
+    for (index, vec) in list_of_vecs.iter().enumerate() {
+        if !vec.is_empty() && vec.len() < smallest_len {
+            smallest_index = index;
+            smallest_vec = vec.clone(); 
+            smallest_len = vec.len();
         }
+    }
+
+    // if smallest_vec remains empty, there were no non-empty vectors in the input
+    if smallest_vec.is_empty() {
+        return (0, Vec::new()); 
     }
 
     (smallest_index, smallest_vec)
@@ -151,6 +152,7 @@ fn query_cbls(
         if b_star.is_empty() {
             println!("Warning: a putatively large union operation is needed for this query.");
             // union all
+            // todo correct
             for index in a_cup {
                 let mut cbl_a = deserialize_cbl(index, output_dir);
                 global_cbl |= &mut cbl_a;
@@ -166,10 +168,12 @@ fn query_cbls(
                 global_cbl |= &mut cbl_d;
             }
         } else {
+			println!("here");
             let (ind, smallest_vec_b) = find_smallest_vec_and_index(&b_star_work);
             b_star_work.remove(ind); // remove smallest b from b*
             let mut local_cbl = CBL::<K, T>::new();
             for index in smallest_vec_b {
+				println!("{}", index);
                 let mut cbl_b = deserialize_cbl(index, output_dir);
                 local_cbl |= &mut cbl_b;
             }
@@ -316,6 +320,15 @@ mod tests {
         assert_eq!(index, 0);
         assert_eq!(smallest_vec, vec![1, 2]);
     }
+    
+    #[test]
+	fn test_smallest_empty() {
+		let list_of_vecs = &[vec![], vec![3, 4], vec![5, 6], vec![7]];
+		let (index, smallest_vec) = find_smallest_vec_and_index(list_of_vecs);
+		assert_eq!(index, 3);
+		assert_eq!(smallest_vec, vec![7]);
+	}
+
 
     #[test]
     fn test_printer() {
