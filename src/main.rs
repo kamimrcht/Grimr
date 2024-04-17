@@ -170,6 +170,7 @@ fn query_cbls(
         } else {
 			println!("here");
             let (ind, smallest_vec_b) = find_smallest_vec_and_index(&b_star_work);
+            println!("{}", ind);
             b_star_work.remove(ind); // remove smallest b from b*
             let mut local_cbl = CBL::<K, T>::new();
             for index in smallest_vec_b {
