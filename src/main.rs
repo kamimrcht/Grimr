@@ -7,6 +7,7 @@ use cbl::kmer::Kmer;
 use cbl::CBL;
 use needletail::parse_fastx_file;
 use std::env;
+use std::convert::TryInto;
 use std::fs::{self, File};
 use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
@@ -83,7 +84,7 @@ fn create_and_serialize_cbls(input_files: Vec<String>, output_dir: &str) {
     for (i, input_filename) in input_files.iter().enumerate() {
         let mut reader = parse_fastx_file(input_filename).unwrap();
         let mut cbl = CBL::<K, T>::new();
-        while let Some(record) = reader.next() {
+        while let Some(record) = reader.next() { //todo create cbls only if needed (all if a, b empty, else, only indexes that appear)
             let seqrec = record.expect("Invalid record");
             cbl.insert_seq(&seqrec.seq());
         }
@@ -135,6 +136,37 @@ fn find_smallest_vec_and_index(list_of_vecs: &[Vec<i32>]) -> (usize, Vec<i32>) {
     (smallest_index, smallest_vec)
 }
 
+
+use std::collections::HashSet;
+
+fn create_unique_vec(
+    a_cup: Vec<i32>,
+    b_star: Vec<Vec<i32>>,
+    c_star: Vec<Vec<i32>>,
+    d_cup: Vec<i32>,
+) -> Vec<i32> {
+    let mut set = HashSet::new();
+    for num in a_cup {
+        set.insert(num);
+    }
+    for vec in b_star {
+        for num in vec {
+            set.insert(num);
+        }
+    }
+    for vec in c_star {
+        for num in vec {
+            set.insert(num);
+        }
+    }
+    for num in d_cup {
+        set.insert(num);
+    }
+    let mut result: Vec<i32> = set.into_iter().collect();
+    result
+}
+
+
 fn query_cbls(
     a_cup: Vec<i32>,
     b_star: Vec<Vec<i32>>,
@@ -152,33 +184,21 @@ fn query_cbls(
         if b_star.is_empty() {
             println!("Warning: a putatively large union operation is needed for this query.");
             // union all
-            // todo correct
-            for index in a_cup {
-                let mut cbl_a = deserialize_cbl(index, output_dir);
-                global_cbl |= &mut cbl_a;
-            }
-            for c in &c_star {
-                for index in c {
-                    let mut cbl_c = deserialize_cbl(*index, output_dir);
-                    global_cbl |= &mut cbl_c;
-                }
-            }
-            for index in &d_cup {
-                let mut cbl_d = deserialize_cbl(*index, output_dir);
-                global_cbl |= &mut cbl_d;
+            let all_datasets = create_unique_vec(a_cup.clone(), b_star.clone(), c_star.clone(), d_cup.clone());
+            for index in all_datasets {
+                let mut cbl_i = deserialize_cbl(index, output_dir);
+                global_cbl |= &mut cbl_i;
             }
         } else {
-			println!("here");
             let (ind, smallest_vec_b) = find_smallest_vec_and_index(&b_star_work);
-            println!("{}", ind);
             b_star_work.remove(ind); // remove smallest b from b*
-            let mut local_cbl = CBL::<K, T>::new();
+            let mut local_cbl = deserialize_cbl(ind.try_into().unwrap(), output_dir); // todo vérifier avec Florian ligne 11 algo 8
             for index in smallest_vec_b {
-				println!("{}", index);
                 let mut cbl_b = deserialize_cbl(index, output_dir);
                 local_cbl |= &mut cbl_b;
             }
             global_cbl |= &mut local_cbl; // clone
+            let count = global_cbl.count();
         }
     } else {
         let mut local_cbl = CBL::<K, T>::new();
@@ -193,29 +213,38 @@ fn query_cbls(
         global_cbl |= &mut local_cbl; // clone
     }
     for c in &c_star {
-        let mut local_cbl = CBL::<K, T>::new();
-        local_cbl |= &mut global_cbl;
-        for index in c {
-            let mut cbl_c = deserialize_cbl(*index, output_dir);
-            local_cbl &= &mut cbl_c;
-        }
-        global_cbl -= &mut local_cbl;
+		if ! c.is_empty() { // todo voir avec florian
+			let mut local_cbl = CBL::<K, T>::new();
+			local_cbl |= &mut global_cbl;
+			for index in c {
+				let mut cbl_c = deserialize_cbl(*index, output_dir);
+				local_cbl &= &mut cbl_c;
+			}
+			global_cbl -= &mut local_cbl;
+			let count = global_cbl.count();
+		}
     }
     for index in &d_cup {
         let mut cbl_d = deserialize_cbl(*index, output_dir);
         global_cbl -= &mut cbl_d;
+        let count = global_cbl.count();
     }
-    for b in b_star_work {
-        let mut local_cbl = CBL::<K, T>::new();
-        for index in b {
-            let mut cbl_b = deserialize_cbl(index, output_dir);
-            let mut cbl_tmp = CBL::<K, T>::new();
-            cbl_tmp |= &mut global_cbl; // "clone"
-            cbl_tmp &= &mut cbl_b;
-            local_cbl |= &mut cbl_tmp;
-        }
-        returned_cbl |= &mut local_cbl;
-    }
+    if b_star_work.is_empty(){
+		let count = global_cbl.count();
+		returned_cbl |= &mut global_cbl;
+	} else {
+		for b in b_star_work { // todo voir avec Florian ligne 32, si vide
+			let mut local_cbl = CBL::<K, T>::new();
+			for index in b {
+				let mut cbl_b = deserialize_cbl(index, output_dir);
+				let mut cbl_tmp = CBL::<K, T>::new();
+				cbl_tmp |= &mut global_cbl; // "clone"
+				cbl_tmp &= &mut cbl_b;
+				local_cbl |= &mut cbl_tmp;
+			}
+			returned_cbl |= &mut local_cbl;
+		}
+	}
     returned_cbl
 }
 
@@ -330,7 +359,35 @@ mod tests {
 		assert_eq!(smallest_vec, vec![7]);
 	}
 
-
+	#[test]
+    fn test_create_unique_vec1() {
+        let a_cup = vec![1, 2, 3];
+        let b_star = vec![vec![4, 5], vec![6]];
+        let c_star = vec![vec![7, 8], vec![9]];
+        let d_cup = vec![10, 11];
+        let mut result = create_unique_vec(a_cup, b_star, c_star, d_cup);
+        result.sort();
+        assert_eq!(result, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+    }
+    #[test]
+    fn test_create_unique_vec2() {
+        let a_cup = vec![1, 2, 3];
+        let b_star = vec![];
+        let c_star = vec![vec![4, 5], vec![6]];
+        let d_cup = vec![7, 8];
+        let mut result = create_unique_vec(a_cup, b_star, c_star, d_cup);
+        result.sort();
+        assert_eq!(result, vec![1, 2, 3, 4, 5, 6, 7, 8]);
+    }
+     fn test_create_unique_vec3() {
+        let a_cup = vec![1, 2, 2];
+        let b_star = vec![vec![2], vec![3, 4]];
+        let c_star = vec![vec![3, 4, 4], vec![5]];
+        let d_cup = vec![1, 6];
+        let mut result = create_unique_vec(a_cup, b_star, c_star, d_cup);
+        result.sort();
+        assert_eq!(result, vec![1, 2, 3, 4, 5, 6]);
+    }
     #[test]
     fn test_printer() {
         let cbl_a = deserialize_cbl(0, "test_files");
