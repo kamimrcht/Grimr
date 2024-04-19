@@ -1,0 +1,5 @@
+A	ALL	[]
+B	ANY	[[0], []]
+C	NOT-ALL	[[]]
+D	NOT-ANY	[]
+
