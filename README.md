@@ -19,7 +19,7 @@ cd test_files
 ```
 
 ```sh
-cargo +nightly run --release -- index fof.txt input_florian.txt
+cargo +nightly run --release -- index test_files/metadata.csv test_files/query2.txt
 ```
 
 ## Query mode
@@ -29,7 +29,7 @@ cd test_files
 ```
 
 ```sh
-cargo +nightly run --release -- query fof.txt input_florian.txt
+cargo +nightly run --release -- query test_files/metadata.csv test_files/query2.txt
 ```
 
 ## Useful commands
