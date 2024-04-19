@@ -11,54 +11,66 @@ use std::convert::TryInto;
 use std::fs::{self, File};
 use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
+use std::collections::HashSet;
+use serde_json::from_str;
+
+
 
 type T = u64;
 const K: usize = 21;
 
-// parse input query file
-fn parse_line(line: &str) -> Vec<i32> {
-    line.split('\t')
-        .last()
-        .unwrap_or("")
-        .trim_matches(|p| p == '[' || p == ']')
-        .split(',')
-        .filter_map(|s| s.trim().parse::<i32>().ok())
-        .collect()
-}
 
-fn parse_list_of_lists(line: &str) -> Vec<Vec<i32>> {
-    line.split('\t')
-        .last()
-        .unwrap_or("")
-        .trim_matches(|p| p == '[' || p == ']')
-        .split("],[")
-        .map(parse_line)
-        .collect()
-}
-
-fn parse_file<P: AsRef<Path>>(
-    path: P,
-) -> io::Result<(Vec<i32>, Vec<Vec<i32>>, Vec<Vec<i32>>, Vec<i32>)> {
+// parse labels and obtain files for all, any, not all, not any
+fn parse_label_file<P: AsRef<Path>>(path: P) -> io::Result<(Vec<i32>, Vec<Vec<i32>>, Vec<Vec<i32>>, Vec<i32>)> {
     let file = File::open(path)?;
-    let reader = BufReader::new(file);
-    let mut lines = reader.lines();
+    let reader = io::BufReader::new(file);
 
-    let list1 = lines
-        .next()
-        .map_or(Ok(vec![]), |l| l.map(|line| parse_line(&line)))?;
-    let list_of_lists1 = lines
-        .next()
-        .map_or(Ok(vec![]), |l| l.map(|line| parse_list_of_lists(&line)))?;
-    let list_of_lists2 = lines
-        .next()
-        .map_or(Ok(vec![]), |l| l.map(|line| parse_list_of_lists(&line)))?;
-    let list2 = lines
-        .next()
-        .map_or(Ok(vec![]), |l| l.map(|line| parse_line(&line)))?;
-    Ok((list1, list_of_lists1, list_of_lists2, list2))
+    let mut vec_all = Vec::new();
+    let mut vec_any = Vec::new();
+    let mut vec_not_all = Vec::new();
+    let mut vec_not_any = Vec::new();
+
+    for line in reader.lines() {
+        let line = line?;
+        let parts: Vec<&str> = line.split('\t').collect();
+
+        if parts.len() != 3 {
+            continue; // Skip lines that do not conform to the expected format.
+        }
+
+        let typ = parts[1];
+        let data_str = parts[2];
+
+        match typ {
+            "ALL" | "NOT-ANY" => {
+                let vec: Vec<i32> = from_str(data_str)
+                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
+                if typ == "ALL" {
+                    vec_all.extend(vec);
+                } else {
+                    vec_not_any.extend(vec);
+                }
+            },
+            "ANY" | "NOT-ALL" => {
+                let vec_of_vec: Vec<Vec<i32>> = from_str(data_str)
+                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
+                if typ == "ANY" {
+                    vec_any.extend(vec_of_vec);
+                } else {
+                    vec_not_all.extend(vec_of_vec);
+                }
+            },
+            _ => return Err(io::Error::new(io::ErrorKind::InvalidInput, "Unknown type encountered"))
+        }
+    }
+
+    Ok((vec_all, vec_any, vec_not_all, vec_not_any))
 }
 
-// reads fastas from a file of file
+
+
+
+// reads fastas from a file of file (csv), only needed files are processed
 fn read_fof_file_csv(file_path: &str) -> io::Result<(Vec<String>, usize)> {
     let file = File::open(file_path)?;
     let reader = BufReader::new(file);
@@ -75,6 +87,39 @@ fn read_fof_file_csv(file_path: &str) -> io::Result<(Vec<String>, usize)> {
 
     Ok((file_paths, color_number))
 }
+
+
+// select files necessary to load in cbls and serialize
+fn select_files_to_load(
+    input_files: &[String], 
+    a_cup: &[i32], 
+    b_star: &[Vec<i32>], 
+    c_star: &[Vec<i32>], 
+    d_cup: &[i32]
+) -> Vec<String> {
+    let mut to_load = Vec::new();
+    
+    if a_cup.is_empty() && b_star.is_empty() { // Corrected logical AND
+        // a_cup and b_star are empty, load everything
+        to_load.extend(input_files.iter().cloned());
+    } else {
+        // load only necessary datasets
+        let mut to_load_id = create_unique_vec(a_cup.to_vec(), b_star.to_vec(), c_star.to_vec(), d_cup.to_vec());
+        if to_load_id.is_empty(){
+			println!("wtf");
+		}
+        for id in to_load_id {
+			println!("{}", id);
+			if id < input_files.len() as i32 { // Make sure the ID is a valid index
+        		let input_filename = &input_files[id as usize];
+        		println!("{}", input_filename);
+                to_load.push(input_filename.to_string());
+            }
+        }
+    }
+    to_load
+}
+
 // create and serialize cbls
 fn create_and_serialize_cbls(input_files: Vec<String>, output_dir: &str,a_cup: Vec<i32>,
     b_star: Vec<Vec<i32>>,
@@ -84,17 +129,8 @@ fn create_and_serialize_cbls(input_files: Vec<String>, output_dir: &str,a_cup: V
     fs::create_dir_all(output_dir).unwrap();
 
     //  create cbls only if needed (all if a, b empty, else, only indexes that appear)
-    let to_load = Vec<>;
-    if (a_cup.is_empty() & b_star.is_empty() { //load everything
-		to_load = input_files.clone();
-	} else {
-		 let mut to_load_id = create_unique_vec(a_cup.clone(), b_star.clone(), c_star.clone(), d_cup.clone()); // load only necessary datasets
-		 to_load_id.sort();
-		 for (i, input_filename) in input_files.iter().enumerate() {
-			 if i in to_load_id {
-				to_load.insert(input_filename);
-			 }
-		 }
+    let to_load = select_files_to_load(&input_files, &a_cup, &b_star, &c_star, &d_cup);
+    if to_load.is_empty(){
 	}
 	for (i, input_filename) in to_load.iter().enumerate() {
 		let mut reader = parse_fastx_file(input_filename).unwrap();
@@ -153,7 +189,6 @@ fn find_smallest_vec_and_index(list_of_vecs: &[Vec<i32>]) -> (usize, Vec<i32>) {
 }
 
 
-use std::collections::HashSet;
 
 fn create_unique_vec(
     a_cup: Vec<i32>,
@@ -283,21 +318,20 @@ fn main() {
     // parse args
     let args: Vec<String> = env::args().collect();
     if args.len() < 4 {
-        eprintln!("Usage: {} <mode> <input_file_list> <labels_list>", args[0]);
+        eprintln!("Usage: {} <mode> <input_metadata>", args[0]);
         std::process::exit(1);
     }
     let mode = args[1].clone();
     let input_file_list = args[2].clone();
     let label_file_list = args[3].clone();
     let output_dir = "serialized_cbls";
-	let labels = parse_file(label_file_list).unwrap();
+	let labels = parse_label_file(label_file_list).unwrap(); //todo test
     let (a_cup, b_star, c_star, d_cup) = labels;
-
     if mode == "index" {
         // read the fof
-        let (input_files, _col_nb) = read_fof_file_csv(&input_file_list, labels).unwrap(); // use of col_nb?
+        let (input_files, _col_nb) = read_fof_file_csv(&input_file_list).unwrap(); // use of col_nb?
                                                                                    // create and serialize CBLs
-        create_and_serialize_cbls(input_files, output_dir);
+        create_and_serialize_cbls(input_files, output_dir, a_cup, b_star, c_star, d_cup);
     } else if mode == "query" {
         let cbl = query_cbls(a_cup, b_star, c_star, d_cup, output_dir);
         let output_path = "output_anti_reindeer_query.txt";
@@ -395,7 +429,8 @@ mod tests {
         result.sort();
         assert_eq!(result, vec![1, 2, 3, 4, 5, 6, 7, 8]);
     }
-     fn test_create_unique_vec3() {
+    #[test]
+    fn test_create_unique_vec3() {
         let a_cup = vec![1, 2, 2];
         let b_star = vec![vec![2], vec![3, 4]];
         let c_star = vec![vec![3, 4, 4], vec![5]];
@@ -403,6 +438,16 @@ mod tests {
         let mut result = create_unique_vec(a_cup, b_star, c_star, d_cup);
         result.sort();
         assert_eq!(result, vec![1, 2, 3, 4, 5, 6]);
+    }
+    #[test]
+    fn test_create_unique_vec4() {
+        let a_cup = vec![];
+        let b_star = vec![vec![0], vec![]];
+        let c_star = vec![vec![], vec![]];
+        let d_cup = vec![];
+        let mut result = create_unique_vec(a_cup, b_star, c_star, d_cup);
+        result.sort();
+        assert_eq!(result, vec![0]);
     }
     #[test]
     fn test_printer() {
@@ -440,5 +485,29 @@ mod tests {
                 panic!("File has fewer lines than expected");
             }
         }
+    }
+    #[test]
+    fn test_load_all_files_1empty() {
+        let input_files = vec!["file1.txt".to_string(), "file2.txt".to_string(), "file3.txt".to_string()];
+        let a_cup: Vec<i32> = vec![];
+        let b_star: Vec<Vec<i32>> = vec![];
+        let c_star: Vec<Vec<i32>> = vec![vec![1]];
+        let d_cup: Vec<i32> = vec![1];
+
+        let loaded_files = select_files_to_load(&input_files, &a_cup, &b_star, &c_star, &d_cup);
+        assert_eq!(loaded_files, input_files);
+    }
+
+    #[test]
+    fn test_load_all_files2() {
+        let input_files = vec!["file1.txt".to_string(), "file2.txt".to_string(), "file3.txt".to_string()];
+        let a_cup: Vec<i32> = vec![1];
+        let b_star: Vec<Vec<i32>> = vec![vec![2]];
+        let c_star: Vec<Vec<i32>> = vec![vec![1]];
+        let d_cup: Vec<i32> = vec![1];
+
+        let mut loaded_files = select_files_to_load(&input_files, &a_cup, &b_star, &c_star, &d_cup);
+        loaded_files.sort();
+        assert_eq!(loaded_files, vec!["file2.txt".to_string(), "file3.txt".to_string()]); 
     }
 }
