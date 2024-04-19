@@ -111,15 +111,10 @@ fn select_files_to_load(
             c_star.to_vec(),
             d_cup.to_vec(),
         );
-        if to_load_id.is_empty() {
-            println!("wtf");
-        }
         for id in to_load_id {
-            println!("{}", id);
             if id < input_files.len() as i32 {
                 // Make sure the ID is a valid index
                 let input_filename = &input_files[id as usize];
-                println!("{}", input_filename);
                 to_load.push(input_filename.to_string());
             }
         }
