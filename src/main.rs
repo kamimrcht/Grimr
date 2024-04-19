@@ -241,6 +241,7 @@ fn query_cbls(
                 global_cbl |= &mut cbl_i;
             }
         } else {
+			println!("here");
             let (ind, smallest_vec_b) = find_smallest_vec_and_index(&b_star_work);
             b_star_work.remove(ind); // remove smallest b from b*
             let mut local_cbl = deserialize_cbl(ind.try_into().unwrap(), output_dir); // todo vérifier avec Florian ligne 11 algo 8
