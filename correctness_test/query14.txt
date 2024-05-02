@@ -1,0 +1,4 @@
+A	ALL	[1,2]
+B	ANY	[[5,6],[7,8]]
+C	NOT-ALL	[]
+D	NOT-ANY	[3,4]
