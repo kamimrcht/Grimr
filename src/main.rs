@@ -769,7 +769,6 @@ mod tests {
             &actual_output_path,
         );
         let _ = fs::remove_file(test_output_dir);
-
     }
     #[test]
     fn test_full_index_and_query_flow6l() {
@@ -788,7 +787,6 @@ mod tests {
             &actual_output_path,
         );
         let _ = fs::remove_file(test_output_dir);
-
     }
     #[test]
     fn test_full_index_and_query_flow7l() {
@@ -807,7 +805,6 @@ mod tests {
             &actual_output_path,
         );
         let _ = fs::remove_file(test_output_dir);
-
     }
     #[test]
     fn test_full_index_and_query_flow8l() {
@@ -826,7 +823,6 @@ mod tests {
             &actual_output_path,
         );
         let _ = fs::remove_file(test_output_dir);
-
     }
     #[test]
     fn test_full_index_and_query_flow9() {
