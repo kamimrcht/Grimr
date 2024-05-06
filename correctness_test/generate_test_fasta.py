@@ -33,7 +33,7 @@ def kmer_set_to_fasta(F,filename):
         f.write(kmer+"\n")
         i+=1
 
-k=31
+k=21
 N = 100 # nb de k-mers par bloc
 M = 22 # nb de blocs
 

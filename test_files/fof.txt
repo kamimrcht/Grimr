@@ -1,6 +1,6 @@
-test1.fa
-test2.fa
-test3.fa
-test4.fa
-test5.fa
-test6.fa
+test_files/test1.fa
+test_files/test2.fa
+test_files/test3.fa
+test_files/test4.fa
+test_files/test5.fa
+test_files/test6.fa

@@ -1,0 +1,2 @@
+correctness_test/F0t.fa
+correctness_test/F1t.fa

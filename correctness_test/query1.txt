@@ -1,4 +1,4 @@
-A	ALL	[1,2]
+A	ALL	[0,1]
 B	ANY	[]
 C	NOT-ALL	[]
 D	NOT-ANY	[]

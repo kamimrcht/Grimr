@@ -1,0 +1,8 @@
+correctness_test/F0t.fa
+correctness_test/F1t.fa
+correctness_test/F2t.fa
+correctness_test/F3t.fa
+correctness_test/F4t.fa
+correctness_test/F5t.fa
+correctness_test/F6t.fa
+correctness_test/F7t.fa

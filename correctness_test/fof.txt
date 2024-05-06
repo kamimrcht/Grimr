@@ -1,8 +1,8 @@
-F1.fa
-F2.fa
-F3.fa
-F4.fa
-F5.fa
-F6.fa
-F7.fa
-F8.fa
+correctness_test/F1.fa
+correctness_test/F2.fa
+correctness_test/F3.fa
+correctness_test/F4.fa
+correctness_test/F5.fa
+correctness_test/F6.fa
+correctness_test/F7.fa
+correctness_test/F8.fa
