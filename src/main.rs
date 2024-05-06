@@ -267,7 +267,6 @@ fn query_cbls(
                 }
             }
             global_cbl = local_cbl.clone(); // clone
-            let c = global_cbl.count();
         }
     } else {
         let mut local_cbl = CBL::<K, T>::new();
@@ -286,8 +285,7 @@ fn query_cbls(
         //NOT ALL
         if !c.is_empty() {
             // todo voir avec florian
-            let mut local_cbl = CBL::<K, T>::new();
-            local_cbl = global_cbl.clone();
+            let mut local_cbl = global_cbl.clone();
             for index in c {
                 let mut cbl_c = deserialize_cbl(*index, output_dir);
                 local_cbl &= &mut cbl_c;
@@ -299,15 +297,14 @@ fn query_cbls(
         //NOT ANY
         let mut cbl_d = deserialize_cbl(*index, output_dir);
         global_cbl -= &mut cbl_d;
-        let count = global_cbl.count();
     }
     for b in b_star_work {
         if !b.is_empty() {
             let mut local_cbl = CBL::<K, T>::new();
             for index in b {
                 let mut cbl_b = deserialize_cbl(index, output_dir);
-                let mut cbl_tmp = CBL::<K, T>::new();
-                cbl_tmp = global_cbl.clone(); // "clone"
+                //let mut cbl_tmp = CBL::<K, T>::new();
+                let mut cbl_tmp = global_cbl.clone(); 
                 cbl_tmp &= &mut cbl_b;
                 local_cbl |= &mut cbl_tmp;
             }
@@ -539,7 +536,6 @@ mod tests {
     fn func_test(
         test_output_dir: &str,
         query_path: &str,
-        test_input_dir: &str,
         metadata_path: &str,
         expected_output_path: &str,
         actual_output_path: &str,
@@ -612,7 +608,6 @@ mod tests {
         func_test(
             test_output_dir,
             &query_path,
-            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -631,7 +626,6 @@ mod tests {
         func_test(
             test_output_dir,
             &query_path,
-            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -650,7 +644,6 @@ mod tests {
         func_test(
             test_output_dir,
             &query_path,
-            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -669,7 +662,6 @@ mod tests {
         func_test(
             test_output_dir,
             &query_path,
-            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -688,14 +680,13 @@ mod tests {
         func_test(
             test_output_dir,
             &query_path,
-            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
         );
         let _ = fs::remove_file(test_output_dir);
     }
-    //#[test]
+    #[test]
     fn test_full_index_and_query_flow3l() {
         // NOT ALL
         let test_input_dir = "correctness_test";
@@ -707,7 +698,6 @@ mod tests {
         func_test(
             test_output_dir,
             &query_path,
-            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -726,7 +716,6 @@ mod tests {
         func_test(
             test_output_dir,
             &query_path,
-            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -745,7 +734,6 @@ mod tests {
         func_test(
             test_output_dir,
             &query_path,
-            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -763,7 +751,6 @@ mod tests {
         func_test(
             test_output_dir,
             &query_path,
-            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -781,7 +768,6 @@ mod tests {
         func_test(
             test_output_dir,
             &query_path,
-            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -799,7 +785,6 @@ mod tests {
         func_test(
             test_output_dir,
             &query_path,
-            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -817,7 +802,6 @@ mod tests {
         func_test(
             test_output_dir,
             &query_path,
-            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -835,7 +819,6 @@ mod tests {
         func_test(
             test_output_dir,
             &query_path,
-            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -852,7 +835,6 @@ mod tests {
         func_test(
             test_output_dir,
             &query_path,
-            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -869,7 +851,6 @@ mod tests {
         func_test(
             test_output_dir,
             &query_path,
-            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -886,7 +867,6 @@ mod tests {
         func_test(
             test_output_dir,
             &query_path,
-            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -903,7 +883,6 @@ mod tests {
         func_test(
             test_output_dir,
             &query_path,
-            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -920,7 +899,6 @@ mod tests {
         func_test(
             test_output_dir,
             &query_path,
-            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -937,7 +915,6 @@ mod tests {
         func_test(
             test_output_dir,
             &query_path,
-            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -954,7 +931,6 @@ mod tests {
         func_test(
             test_output_dir,
             &query_path,
-            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
