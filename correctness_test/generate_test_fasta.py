@@ -149,16 +149,16 @@ query = (F5 | F6) & (F7 | F8)
 assert query == b
 kmer_set_to_fasta(b,"expected_2.fa")
 
-# QUERY 3 : C
+# QUERY 3 : U \ C
 
-query = (F5 & F6) | (F7 & F8)
-assert query == c
+query = univers - ((F5 & F6) | (F7 & F8))
+assert query == univers - c
 kmer_set_to_fasta(c,"expected_3.fa")
 
-# QUERY 4 : D
+# QUERY 4 : U \ D 
 
-query = F3 | F4
-assert query == d
+query = univers - ( F3 | F4 )
+assert query == univers - d
 kmer_set_to_fasta(d,"expected_4.fa")
 
 # QUERY 5 : (A & B)
