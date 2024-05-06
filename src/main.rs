@@ -8,7 +8,6 @@ use cbl::CBL;
 use needletail::parse_fastx_file;
 use serde_json::from_str;
 use std::collections::HashSet;
-use std::convert::TryInto;
 use std::env;
 use std::fs::{self, File};
 use std::io::{self, BufRead, BufReader, BufWriter, Write};
@@ -151,7 +150,7 @@ fn create_and_serialize_cbls(
     let to_load_values =
         select_files_to_load(&input_files, &a_cup, &b_star, &c_star, &d_cup).unwrap();
     let (to_load, indices) = to_load_values;
-    if to_load.is_empty() {}
+    to_load.is_empty();
     for (i, input_filename) in to_load.iter().enumerate() {
         let mut reader = parse_fastx_file(input_filename).unwrap();
         let mut cbl = CBL::<K, T>::new();
@@ -230,7 +229,7 @@ fn create_unique_vec(
     for num in d_cup {
         set.insert(num);
     }
-    let mut result: Vec<i32> = set.into_iter().collect();
+    let result: Vec<i32> = set.into_iter().collect();
     result
 }
 
@@ -550,7 +549,7 @@ mod tests {
         fs::create_dir_all(test_output_dir).expect("Failed to create test output directory");
         let labels = parse_label_file(query_path).unwrap();
         let (a_cup, b_star, c_star, d_cup) = labels;
-        let (input_files, _col_nb) = read_fof_file_csv(&metadata_path).unwrap();
+        let (input_files, _col_nb) = read_fof_file_csv(metadata_path).unwrap();
         create_and_serialize_cbls(
             input_files,
             test_output_dir,
@@ -577,7 +576,7 @@ mod tests {
         let _ = fs::remove_file(actual_output_path);
         cbl_printer(&cbl_act, actual_output_path).expect("Failed to print CBL"); //TODO REMOVE
 
-        assert_eq!(cbl_act.is_empty(), true);
+        assert!(cbl_act.is_empty());
     }
 
     #[test]
@@ -613,9 +612,9 @@ mod tests {
         let expected_output_path = format!("{}/expected_1t.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query1_results.fa", test_output_dir);
         func_test(
-            &test_output_dir,
+            test_output_dir,
             &query_path,
-            &test_input_dir,
+            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -632,9 +631,9 @@ mod tests {
         let expected_output_path = format!("{}/expected_1.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query1l_results.fa", test_output_dir);
         func_test(
-            &test_output_dir,
+            test_output_dir,
             &query_path,
-            &test_input_dir,
+            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -651,9 +650,9 @@ mod tests {
         let expected_output_path = format!("{}/expected_2t.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query2_results.fa", test_output_dir);
         func_test(
-            &test_output_dir,
+            test_output_dir,
             &query_path,
-            &test_input_dir,
+            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -670,9 +669,9 @@ mod tests {
         let expected_output_path = format!("{}/expected_2.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query2l_results.fa", test_output_dir);
         func_test(
-            &test_output_dir,
+            test_output_dir,
             &query_path,
-            &test_input_dir,
+            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -689,9 +688,9 @@ mod tests {
         let expected_output_path = format!("{}/expected_3t.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query3_results.fa", test_output_dir);
         func_test(
-            &test_output_dir,
+            test_output_dir,
             &query_path,
-            &test_input_dir,
+            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -708,9 +707,9 @@ mod tests {
         let expected_output_path = format!("{}/expected_3.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query3l_results.fa", test_output_dir);
         func_test(
-            &test_output_dir,
+            test_output_dir,
             &query_path,
-            &test_input_dir,
+            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -727,9 +726,9 @@ mod tests {
         let expected_output_path = format!("{}/expected_4t.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query4_results.fa", test_output_dir);
         func_test(
-            &test_output_dir,
+            test_output_dir,
             &query_path,
-            &test_input_dir,
+            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -746,9 +745,9 @@ mod tests {
         let expected_output_path = format!("{}/expected_4.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query4l_results.fa", test_output_dir);
         func_test(
-            &test_output_dir,
+            test_output_dir,
             &query_path,
-            &test_input_dir,
+            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -764,9 +763,9 @@ mod tests {
         let expected_output_path = format!("{}/expected_5.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query5_results.fa", test_output_dir);
         func_test(
-            &test_output_dir,
+            test_output_dir,
             &query_path,
-            &test_input_dir,
+            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -781,9 +780,9 @@ mod tests {
         let expected_output_path = format!("{}/expected_6.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query6_results.fa", test_output_dir);
         func_test(
-            &test_output_dir,
+            test_output_dir,
             &query_path,
-            &test_input_dir,
+            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -798,9 +797,9 @@ mod tests {
         let expected_output_path = format!("{}/expected_7.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query7_results.fa", test_output_dir);
         func_test(
-            &test_output_dir,
+            test_output_dir,
             &query_path,
-            &test_input_dir,
+            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -815,9 +814,9 @@ mod tests {
         let expected_output_path = format!("{}/expected_8.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query8_results.fa", test_output_dir);
         func_test(
-            &test_output_dir,
+            test_output_dir,
             &query_path,
-            &test_input_dir,
+            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -832,9 +831,9 @@ mod tests {
         let expected_output_path = format!("{}/expected_9.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query9_results.fa", test_output_dir);
         func_test(
-            &test_output_dir,
+            test_output_dir,
             &query_path,
-            &test_input_dir,
+            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -849,9 +848,9 @@ mod tests {
         let expected_output_path = format!("{}/expected_10.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query10_results.fa", test_output_dir);
         func_test(
-            &test_output_dir,
+            test_output_dir,
             &query_path,
-            &test_input_dir,
+            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -866,9 +865,9 @@ mod tests {
         let expected_output_path = format!("{}/expected_11.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query11_results.fa", test_output_dir);
         func_test(
-            &test_output_dir,
+            test_output_dir,
             &query_path,
-            &test_input_dir,
+            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -883,9 +882,9 @@ mod tests {
         let expected_output_path = format!("{}/expected_12.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query12_results.fa", test_output_dir);
         func_test(
-            &test_output_dir,
+            test_output_dir,
             &query_path,
-            &test_input_dir,
+            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -900,9 +899,9 @@ mod tests {
         let expected_output_path = format!("{}/expected_13.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query13_results.fa", test_output_dir);
         func_test(
-            &test_output_dir,
+            test_output_dir,
             &query_path,
-            &test_input_dir,
+            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -917,9 +916,9 @@ mod tests {
         let expected_output_path = format!("{}/expected_14.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query14_results.fa", test_output_dir);
         func_test(
-            &test_output_dir,
+            test_output_dir,
             &query_path,
-            &test_input_dir,
+            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
@@ -934,9 +933,9 @@ mod tests {
         let expected_output_path = format!("{}/expected_15.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query15_results.fa", test_output_dir);
         func_test(
-            &test_output_dir,
+            test_output_dir,
             &query_path,
-            &test_input_dir,
+            test_input_dir,
             &metadata_path,
             &expected_output_path,
             &actual_output_path,
