@@ -284,7 +284,6 @@ fn query_cbls(
     for c in &c_star {
         //NOT ALL
         if !c.is_empty() {
-            // todo voir avec florian
             let mut local_cbl = global_cbl.clone();
             for index in c {
                 let mut cbl_c = deserialize_cbl(*index, output_dir);

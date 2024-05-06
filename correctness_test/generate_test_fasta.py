@@ -189,7 +189,7 @@ sol = set(blocs[1]+blocs[2]+blocs[5]+blocs[6])
 assert query == sol
 kmer_set_to_fasta(sol,"expected_8.fa")
 
-# QUERY 9 : B \ C // TODO erreur ici, ne donne pas b \ c
+# QUERY 9 : B \ C // TODO erreur ici, ne donne pas b \ c, j'ai changé query9.txt
 
 query = b - c
 sol = set(blocs[2]+blocs[8]+blocs[14]+blocs[15])
