@@ -293,7 +293,6 @@ fn query_cbls(
                 local_cbl &= &mut cbl_c;
             }
             global_cbl -= &mut local_cbl;
-            let count = global_cbl.count();
         }
     }
     for index in &d_cup {
@@ -575,7 +574,6 @@ mod tests {
         cbl_act -= &mut cbl_exp;
         let _ = fs::remove_file(actual_output_path);
         cbl_printer(&cbl_act, actual_output_path).expect("Failed to print CBL"); //TODO REMOVE
-
         assert!(cbl_act.is_empty());
     }
 
@@ -754,14 +752,14 @@ mod tests {
         );
         let _ = fs::remove_file(test_output_dir);
     }
-    //#[test]
-    fn test_full_index_and_query_flow5() {
+    #[test]
+    fn test_full_index_and_query_flow5l() {
         let test_input_dir = "correctness_test";
-        let test_output_dir = "correctness_test/output";
+        let test_output_dir = "correctness_test/output5_l";
         let metadata_path = format!("{}/fof.txt", test_input_dir);
         let query_path = format!("{}/query5.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_5.fa", test_input_dir);
-        let actual_output_path = format!("{}/output_query5_results.fa", test_output_dir);
+        let actual_output_path = format!("{}/output_query5l_results.fa", test_output_dir);
         func_test(
             test_output_dir,
             &query_path,
@@ -770,15 +768,17 @@ mod tests {
             &expected_output_path,
             &actual_output_path,
         );
+        let _ = fs::remove_file(test_output_dir);
+
     }
-    //#[test]
-    fn test_full_index_and_query_flow6() {
+    #[test]
+    fn test_full_index_and_query_flow6l() {
         let test_input_dir = "correctness_test";
-        let test_output_dir = "correctness_test/output";
+        let test_output_dir = "correctness_test/output6_l";
         let metadata_path = format!("{}/fof.txt", test_input_dir);
         let query_path = format!("{}/query6.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_6.fa", test_input_dir);
-        let actual_output_path = format!("{}/output_query6_results.fa", test_output_dir);
+        let actual_output_path = format!("{}/output_query6l_results.fa", test_output_dir);
         func_test(
             test_output_dir,
             &query_path,
@@ -787,15 +787,17 @@ mod tests {
             &expected_output_path,
             &actual_output_path,
         );
+        let _ = fs::remove_file(test_output_dir);
+
     }
-    //#[test]
-    fn test_full_index_and_query_flow7() {
+    #[test]
+    fn test_full_index_and_query_flow7l() {
         let test_input_dir = "correctness_test";
-        let test_output_dir = "correctness_test/output";
+        let test_output_dir = "correctness_test/output7_l";
         let metadata_path = format!("{}/fof.txt", test_input_dir);
         let query_path = format!("{}/query7.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_7.fa", test_input_dir);
-        let actual_output_path = format!("{}/output_query7_results.fa", test_output_dir);
+        let actual_output_path = format!("{}/output_query7l_results.fa", test_output_dir);
         func_test(
             test_output_dir,
             &query_path,
@@ -804,15 +806,17 @@ mod tests {
             &expected_output_path,
             &actual_output_path,
         );
+        let _ = fs::remove_file(test_output_dir);
+
     }
-    //#[test]
-    fn test_full_index_and_query_flow8() {
+    #[test]
+    fn test_full_index_and_query_flow8l() {
         let test_input_dir = "correctness_test";
-        let test_output_dir = "correctness_test/output";
+        let test_output_dir = "correctness_test/output8_l";
         let metadata_path = format!("{}/fof.txt", test_input_dir);
         let query_path = format!("{}/query8.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_8.fa", test_input_dir);
-        let actual_output_path = format!("{}/output_query8_results.fa", test_output_dir);
+        let actual_output_path = format!("{}/output_query8l_results.fa", test_output_dir);
         func_test(
             test_output_dir,
             &query_path,
@@ -821,14 +825,16 @@ mod tests {
             &expected_output_path,
             &actual_output_path,
         );
+        let _ = fs::remove_file(test_output_dir);
+
     }
-    //#[test]
+    #[test]
     fn test_full_index_and_query_flow9() {
         let test_input_dir = "correctness_test";
-        let test_output_dir = "correctness_test/output";
-        let metadata_path = format!("{}/fof.txt", test_input_dir);
-        let query_path = format!("{}/query9.txt", test_input_dir);
-        let expected_output_path = format!("{}/expected_9.fa", test_input_dir);
+        let test_output_dir = "correctness_test/output9";
+        let metadata_path = format!("{}/foft.txt", test_input_dir);
+        let query_path = format!("{}/query9t.txt", test_input_dir);
+        let expected_output_path = format!("{}/expected_9t.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query9_results.fa", test_output_dir);
         func_test(
             test_output_dir,
@@ -839,14 +845,31 @@ mod tests {
             &actual_output_path,
         );
     }
-    //#[test]
-    fn test_full_index_and_query_flow10() {
+    #[test]
+    fn test_full_index_and_query_flow9l() {
         let test_input_dir = "correctness_test";
-        let test_output_dir = "correctness_test/output";
+        let test_output_dir = "correctness_test/output9_l";
+        let metadata_path = format!("{}/fof.txt", test_input_dir);
+        let query_path = format!("{}/query9.txt", test_input_dir);
+        let expected_output_path = format!("{}/expected_9.fa", test_input_dir);
+        let actual_output_path = format!("{}/output_query9l_results.fa", test_output_dir);
+        func_test(
+            test_output_dir,
+            &query_path,
+            test_input_dir,
+            &metadata_path,
+            &expected_output_path,
+            &actual_output_path,
+        );
+    }
+    #[test]
+    fn test_full_index_and_query_flow10l() {
+        let test_input_dir = "correctness_test";
+        let test_output_dir = "correctness_test/output10_l";
         let metadata_path = format!("{}/fof.txt", test_input_dir);
         let query_path = format!("{}/query10.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_10.fa", test_input_dir);
-        let actual_output_path = format!("{}/output_query10_results.fa", test_output_dir);
+        let actual_output_path = format!("{}/output_query10l_results.fa", test_output_dir);
         func_test(
             test_output_dir,
             &query_path,
@@ -856,14 +879,14 @@ mod tests {
             &actual_output_path,
         );
     }
-    //#[test]
-    fn test_full_index_and_query_flow11() {
+    #[test]
+    fn test_full_index_and_query_flow11l() {
         let test_input_dir = "correctness_test";
-        let test_output_dir = "correctness_test/output";
+        let test_output_dir = "correctness_test/output11_l";
         let metadata_path = format!("{}/fof.txt", test_input_dir);
         let query_path = format!("{}/query11.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_11.fa", test_input_dir);
-        let actual_output_path = format!("{}/output_query11_results.fa", test_output_dir);
+        let actual_output_path = format!("{}/output_query11l_results.fa", test_output_dir);
         func_test(
             test_output_dir,
             &query_path,
@@ -873,14 +896,14 @@ mod tests {
             &actual_output_path,
         );
     }
-    //#[test]
-    fn test_full_index_and_query_flow12() {
+    #[test]
+    fn test_full_index_and_query_flow12l() {
         let test_input_dir = "correctness_test";
-        let test_output_dir = "correctness_test/output";
+        let test_output_dir = "correctness_test/output12_l";
         let metadata_path = format!("{}/fof.txt", test_input_dir);
         let query_path = format!("{}/query12.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_12.fa", test_input_dir);
-        let actual_output_path = format!("{}/output_query12_results.fa", test_output_dir);
+        let actual_output_path = format!("{}/output_query12l_results.fa", test_output_dir);
         func_test(
             test_output_dir,
             &query_path,
@@ -890,14 +913,14 @@ mod tests {
             &actual_output_path,
         );
     }
-    //#[test]
-    fn test_full_index_and_query_flow13() {
+    #[test]
+    fn test_full_index_and_query_flow13l() {
         let test_input_dir = "correctness_test";
-        let test_output_dir = "correctness_test/output";
+        let test_output_dir = "correctness_test/output13_l";
         let metadata_path = format!("{}/fof.txt", test_input_dir);
         let query_path = format!("{}/query13.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_13.fa", test_input_dir);
-        let actual_output_path = format!("{}/output_query13_results.fa", test_output_dir);
+        let actual_output_path = format!("{}/output_query13l_results.fa", test_output_dir);
         func_test(
             test_output_dir,
             &query_path,
@@ -907,14 +930,14 @@ mod tests {
             &actual_output_path,
         );
     }
-    //#[test]
-    fn test_full_index_and_query_flow14() {
+    #[test]
+    fn test_full_index_and_query_flow14l() {
         let test_input_dir = "correctness_test";
-        let test_output_dir = "correctness_test/output";
+        let test_output_dir = "correctness_test/output_14l";
         let metadata_path = format!("{}/fof.txt", test_input_dir);
         let query_path = format!("{}/query14.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_14.fa", test_input_dir);
-        let actual_output_path = format!("{}/output_query14_results.fa", test_output_dir);
+        let actual_output_path = format!("{}/output_query14l_results.fa", test_output_dir);
         func_test(
             test_output_dir,
             &query_path,
@@ -924,14 +947,14 @@ mod tests {
             &actual_output_path,
         );
     }
-    //#[test]
-    fn test_full_index_and_query_flow15() {
+    #[test]
+    fn test_full_index_and_query_flow15l() {
         let test_input_dir = "correctness_test";
-        let test_output_dir = "correctness_test/output";
+        let test_output_dir = "correctness_test/output15_l";
         let metadata_path = format!("{}/fof.txt", test_input_dir);
         let query_path = format!("{}/query15.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_15.fa", test_input_dir);
-        let actual_output_path = format!("{}/output_query15_results.fa", test_output_dir);
+        let actual_output_path = format!("{}/output_query15l_results.fa", test_output_dir);
         func_test(
             test_output_dir,
             &query_path,
