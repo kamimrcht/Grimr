@@ -34,7 +34,7 @@ fn parse_label_file<P: AsRef<Path>>(
         let parts: Vec<&str> = line.split('\t').collect();
 
         if parts.len() != 3 {
-            continue; 
+            continue;
         }
 
         let typ = parts[1];
@@ -97,42 +97,41 @@ fn select_files_to_load(
     c_star: &[Vec<i32>],
     d_cup: &[i32],
 ) -> io::Result<(Vec<String>, Vec<usize>)> {
-	let mut to_load = Vec::new();
-	let mut load_indices = Vec::new();
-		let mut indices = std::collections::HashSet::new();
-		// a_cup and b_star are empty, load everything
-		if a_cup.is_empty() && b_star.is_empty()  {
-			for (i, file) in input_files.iter().enumerate() {
-					to_load.push(file.clone());
-					load_indices.push(i);
-				}
+    let mut to_load = Vec::new();
+    let mut load_indices = Vec::new();
+    let mut indices = std::collections::HashSet::new();
+    // a_cup and b_star are empty, load everything
+    if a_cup.is_empty() && b_star.is_empty() {
+        for (i, file) in input_files.iter().enumerate() {
+            to_load.push(file.clone());
+            load_indices.push(i);
+        }
+    } else {
+        for &index in a_cup {
+            indices.insert(index);
+        }
+        for vec in b_star {
+            for &index in vec {
+                indices.insert(index);
+            }
+        }
+        for vec in c_star {
+            for &index in vec {
+                indices.insert(index);
+            }
+        }
+        for &index in d_cup {
+            indices.insert(index);
+        }
 
-		} else {
-			for &index in a_cup {
-				indices.insert(index);
-			}
-			for vec in b_star {
-				for &index in vec {
-					indices.insert(index);
-				}
-			}
-			for vec in c_star {
-				for &index in vec {
-					indices.insert(index);
-				}
-			}
-			for &index in d_cup {
-				indices.insert(index);
-			}
-			
-			// Load files by iterating over input_files to maintain order
-			for (i, file) in input_files.iter().enumerate() {
-				if indices.contains(&(i as i32)) {
-					to_load.push(file.clone());
-					load_indices.push(i);
-				}
-			}
-		} 
+        // Load files by iterating over input_files to maintain order
+        for (i, file) in input_files.iter().enumerate() {
+            if indices.contains(&(i as i32)) {
+                to_load.push(file.clone());
+                load_indices.push(i);
+            }
+        }
+    }
     Ok((to_load, load_indices))
 }
 
@@ -149,8 +148,9 @@ fn create_and_serialize_cbls(
     let _ = fs::remove_file(output_dir);
     fs::create_dir_all(output_dir).unwrap();
     //  create cbls only if needed (all if a, b empty, else, only indexes that appear)
-    let to_load_values = select_files_to_load(&input_files, &a_cup, &b_star, &c_star, &d_cup).unwrap();
-    let (to_load, indices) = to_load_values ;
+    let to_load_values =
+        select_files_to_load(&input_files, &a_cup, &b_star, &c_star, &d_cup).unwrap();
+    let (to_load, indices) = to_load_values;
     if to_load.is_empty() {}
     for (i, input_filename) in to_load.iter().enumerate() {
         let mut reader = parse_fastx_file(input_filename).unwrap();
@@ -254,7 +254,6 @@ fn query_cbls(
                 global_cbl |= &mut cbl_i;
             }
         } else {
-
             let (ind, smallest_vec_b) = find_smallest_vec_and_index(&b_star_work);
             b_star_work.remove(ind); // remove smallest b from b*
             let mut local_cbl = CBL::<K, T>::new();
@@ -272,27 +271,24 @@ fn query_cbls(
             let c = global_cbl.count();
         }
     } else {
-
         let mut local_cbl = CBL::<K, T>::new();
         for (i, index) in a_cup.iter().enumerate() {
             if i == 0 {
                 local_cbl = deserialize_cbl(*index, output_dir);
-
             } else {
                 let mut cbl_a = deserialize_cbl(*index, output_dir);
                 local_cbl &= &mut cbl_a;
-
             }
         }
         global_cbl = local_cbl.clone(); // clone
-        
     }
     // TEST FAILING HERE?
-    for c in &c_star {//NOT ALL
-        if !c.is_empty() { 
+    for c in &c_star {
+        //NOT ALL
+        if !c.is_empty() {
             // todo voir avec florian
             let mut local_cbl = CBL::<K, T>::new();
-            local_cbl =  global_cbl.clone();
+            local_cbl = global_cbl.clone();
             for index in c {
                 let mut cbl_c = deserialize_cbl(*index, output_dir);
                 local_cbl &= &mut cbl_c;
@@ -301,24 +297,25 @@ fn query_cbls(
             let count = global_cbl.count();
         }
     }
-    for index in &d_cup { //NOT ANY
+    for index in &d_cup {
+        //NOT ANY
         let mut cbl_d = deserialize_cbl(*index, output_dir);
         global_cbl -= &mut cbl_d;
         let count = global_cbl.count();
     }
-	for b in b_star_work {
-		if !b.is_empty() {
-			let mut local_cbl = CBL::<K, T>::new();
-			for index in b {
-				let mut cbl_b = deserialize_cbl(index, output_dir);
-				let mut cbl_tmp = CBL::<K, T>::new();
-				cbl_tmp = global_cbl.clone(); // "clone"
-				cbl_tmp &= &mut cbl_b;
-				local_cbl |= &mut cbl_tmp;
-			}
-			global_cbl = local_cbl.clone();
-		}
-	}
+    for b in b_star_work {
+        if !b.is_empty() {
+            let mut local_cbl = CBL::<K, T>::new();
+            for index in b {
+                let mut cbl_b = deserialize_cbl(index, output_dir);
+                let mut cbl_tmp = CBL::<K, T>::new();
+                cbl_tmp = global_cbl.clone(); // "clone"
+                cbl_tmp &= &mut cbl_b;
+                local_cbl |= &mut cbl_tmp;
+            }
+            global_cbl = local_cbl.clone();
+        }
+    }
     global_cbl
 }
 
@@ -514,7 +511,8 @@ mod tests {
         let c_star: Vec<Vec<i32>> = vec![vec![1]];
         let d_cup: Vec<i32> = vec![1];
 
-        let loaded_files_values = select_files_to_load(&input_files, &a_cup, &b_star, &c_star, &d_cup).unwrap();
+        let loaded_files_values =
+            select_files_to_load(&input_files, &a_cup, &b_star, &c_star, &d_cup).unwrap();
         let (loaded_files, _) = loaded_files_values;
         assert_eq!(loaded_files, input_files);
     }
@@ -531,24 +529,43 @@ mod tests {
         let c_star: Vec<Vec<i32>> = vec![vec![1]];
         let d_cup: Vec<i32> = vec![1];
 
-        let loaded_files_values = select_files_to_load(&input_files, &a_cup, &b_star, &c_star, &d_cup).unwrap();
+        let loaded_files_values =
+            select_files_to_load(&input_files, &a_cup, &b_star, &c_star, &d_cup).unwrap();
         let (loaded_files, _) = loaded_files_values;
         assert_eq!(
             loaded_files,
             vec!["file2.txt".to_string(), "file3.txt".to_string()]
         );
     }
-    
 
-    fn func_test(test_output_dir: &str, query_path:&str, test_input_dir:&str, metadata_path:&str, expected_output_path:&str, actual_output_path:&str)
-    {
-		let _ = fs::remove_file(test_output_dir);
-		fs::create_dir_all(test_output_dir).expect("Failed to create test output directory");
-        let labels = parse_label_file(query_path).unwrap(); 
-		let (a_cup, b_star, c_star, d_cup) = labels;
-        let (input_files, _col_nb) = read_fof_file_csv(&metadata_path).unwrap(); 
-        create_and_serialize_cbls(input_files, test_output_dir, a_cup.clone(), b_star.clone(), c_star.clone(), d_cup.clone());
-        let mut cbl_act = query_cbls(a_cup.clone(), b_star.clone(), c_star.clone(), d_cup.clone(), test_output_dir);
+    fn func_test(
+        test_output_dir: &str,
+        query_path: &str,
+        test_input_dir: &str,
+        metadata_path: &str,
+        expected_output_path: &str,
+        actual_output_path: &str,
+    ) {
+        let _ = fs::remove_file(test_output_dir);
+        fs::create_dir_all(test_output_dir).expect("Failed to create test output directory");
+        let labels = parse_label_file(query_path).unwrap();
+        let (a_cup, b_star, c_star, d_cup) = labels;
+        let (input_files, _col_nb) = read_fof_file_csv(&metadata_path).unwrap();
+        create_and_serialize_cbls(
+            input_files,
+            test_output_dir,
+            a_cup.clone(),
+            b_star.clone(),
+            c_star.clone(),
+            d_cup.clone(),
+        );
+        let mut cbl_act = query_cbls(
+            a_cup.clone(),
+            b_star.clone(),
+            c_star.clone(),
+            d_cup.clone(),
+            test_output_dir,
+        );
         //assert_eq!(cbl_act.is_empty(), false);
         let mut expected_content = parse_fastx_file(expected_output_path).unwrap();
         let mut cbl_exp = CBL::<K, T>::new();
@@ -561,123 +578,182 @@ mod tests {
         cbl_printer(&cbl_act, actual_output_path).expect("Failed to print CBL"); //TODO REMOVE
 
         assert_eq!(cbl_act.is_empty(), true);
-	}
-	
-	#[test]
-	fn test_cbl(){
-		let dir = "test_files";
-		let metadata_path = format!("{}/foftt.txt", dir);
-		let query_path = format!("{}/query1.txt", dir);
-		let o_dir = format!("{}/output_tser/", dir) ;
-		let p_path = format!("{}/output_tser/output.fa", dir) ;
-		let labels = parse_label_file(query_path).unwrap(); 
-		let (a_cup, b_star, c_star, d_cup) = labels;
-		let (input_files, _col_nb) = read_fof_file_csv(&metadata_path).unwrap(); 
-		create_and_serialize_cbls(input_files, &o_dir, a_cup.clone(), b_star.clone(), c_star.clone(), d_cup.clone());
-		let cbl = deserialize_cbl(0, &o_dir);
-		cbl_printer(&cbl, &p_path).expect("Failed to print CBL");
-		assert_eq!(cbl.count(), 2);
-	}
-	
+    }
 
-    
     #[test]
-    fn test_full_index_and_query_flow() { //ALL
+    fn test_cbl() {
+        let dir = "test_files";
+        let metadata_path = format!("{}/foftt.txt", dir);
+        let query_path = format!("{}/query1.txt", dir);
+        let o_dir = format!("{}/output_tser/", dir);
+        let p_path = format!("{}/output_tser/output.fa", dir);
+        let labels = parse_label_file(query_path).unwrap();
+        let (a_cup, b_star, c_star, d_cup) = labels;
+        let (input_files, _col_nb) = read_fof_file_csv(&metadata_path).unwrap();
+        create_and_serialize_cbls(
+            input_files,
+            &o_dir,
+            a_cup.clone(),
+            b_star.clone(),
+            c_star.clone(),
+            d_cup.clone(),
+        );
+        let cbl = deserialize_cbl(0, &o_dir);
+        cbl_printer(&cbl, &p_path).expect("Failed to print CBL");
+        assert_eq!(cbl.count(), 2);
+    }
+
+    #[test]
+    fn test_full_index_and_query_flow() {
+        //ALL
         let test_input_dir = "correctness_test";
         let test_output_dir = "correctness_test/output";
         let metadata_path = format!("{}/foft.txt", test_input_dir);
         let query_path = format!("{}/query1t.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_1t.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query1_results.fa", test_output_dir);
-        func_test(&test_output_dir, &query_path, &test_input_dir, &metadata_path, &expected_output_path, &actual_output_path);
+        func_test(
+            &test_output_dir,
+            &query_path,
+            &test_input_dir,
+            &metadata_path,
+            &expected_output_path,
+            &actual_output_path,
+        );
         let _ = fs::remove_file(test_output_dir);
-
-
     }
     #[test]
-    fn test_full_index_and_query_flowl() { //ALL
+    fn test_full_index_and_query_flowl() {
+        //ALL
         let test_input_dir = "correctness_test";
         let test_output_dir = "correctness_test/output_l";
         let metadata_path = format!("{}/fof.txt", test_input_dir);
         let query_path = format!("{}/query1.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_1.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query1l_results.fa", test_output_dir);
-        func_test(&test_output_dir, &query_path, &test_input_dir, &metadata_path, &expected_output_path, &actual_output_path);
+        func_test(
+            &test_output_dir,
+            &query_path,
+            &test_input_dir,
+            &metadata_path,
+            &expected_output_path,
+            &actual_output_path,
+        );
         let _ = fs::remove_file(test_output_dir);
     }
     #[test]
-    fn test_full_index_and_query_flow2() { //ANY
+    fn test_full_index_and_query_flow2() {
+        //ANY
         let test_input_dir = "correctness_test";
         let test_output_dir = "correctness_test/output2";
         let metadata_path = format!("{}/foft.txt", test_input_dir);
         let query_path = format!("{}/query2t.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_2t.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query2_results.fa", test_output_dir);
-        func_test(&test_output_dir, &query_path, &test_input_dir, &metadata_path, &expected_output_path, &actual_output_path);
+        func_test(
+            &test_output_dir,
+            &query_path,
+            &test_input_dir,
+            &metadata_path,
+            &expected_output_path,
+            &actual_output_path,
+        );
         let _ = fs::remove_file(test_output_dir);
-
-
     }
     #[test]
-    fn test_full_index_and_query_flow2l() { //ANY
+    fn test_full_index_and_query_flow2l() {
+        //ANY
         let test_input_dir = "correctness_test";
         let test_output_dir = "correctness_test/output2_l";
         let metadata_path = format!("{}/fof.txt", test_input_dir);
         let query_path = format!("{}/query2.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_2.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query2l_results.fa", test_output_dir);
-        func_test(&test_output_dir, &query_path, &test_input_dir, &metadata_path, &expected_output_path, &actual_output_path);
+        func_test(
+            &test_output_dir,
+            &query_path,
+            &test_input_dir,
+            &metadata_path,
+            &expected_output_path,
+            &actual_output_path,
+        );
         let _ = fs::remove_file(test_output_dir);
-
-
     }
     #[test]
-    fn test_full_index_and_query_flow3() { // NOT ALL
+    fn test_full_index_and_query_flow3() {
+        // NOT ALL
         let test_input_dir = "correctness_test";
         let test_output_dir = "correctness_test/output3";
         let metadata_path = format!("{}/foft.txt", test_input_dir);
         let query_path = format!("{}/query3t.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_3t.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query3_results.fa", test_output_dir);
-        func_test(&test_output_dir, &query_path, &test_input_dir, &metadata_path, &expected_output_path, &actual_output_path);
-	    let _ = fs::remove_file(test_output_dir);
-
+        func_test(
+            &test_output_dir,
+            &query_path,
+            &test_input_dir,
+            &metadata_path,
+            &expected_output_path,
+            &actual_output_path,
+        );
+        let _ = fs::remove_file(test_output_dir);
     }
     //#[test]
-    fn test_full_index_and_query_flow3l() { // NOT ALL
+    fn test_full_index_and_query_flow3l() {
+        // NOT ALL
         let test_input_dir = "correctness_test";
         let test_output_dir = "correctness_test/output3_l";
         let metadata_path = format!("{}/fof.txt", test_input_dir);
         let query_path = format!("{}/query3.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_3.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query3l_results.fa", test_output_dir);
-        func_test(&test_output_dir, &query_path, &test_input_dir, &metadata_path, &expected_output_path, &actual_output_path);
-	    let _ = fs::remove_file(test_output_dir);
-
+        func_test(
+            &test_output_dir,
+            &query_path,
+            &test_input_dir,
+            &metadata_path,
+            &expected_output_path,
+            &actual_output_path,
+        );
+        let _ = fs::remove_file(test_output_dir);
     }
     #[test]
-    fn test_full_index_and_query_flow4() { // NOT ANY
+    fn test_full_index_and_query_flow4() {
+        // NOT ANY
         let test_input_dir = "correctness_test";
         let test_output_dir = "correctness_test/output4";
         let metadata_path = format!("{}/foft.txt", test_input_dir);
         let query_path = format!("{}/query4t.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_4t.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query4_results.fa", test_output_dir);
-        func_test(&test_output_dir, &query_path, &test_input_dir, &metadata_path, &expected_output_path, &actual_output_path);
+        func_test(
+            &test_output_dir,
+            &query_path,
+            &test_input_dir,
+            &metadata_path,
+            &expected_output_path,
+            &actual_output_path,
+        );
         let _ = fs::remove_file(test_output_dir);
-
     }
     #[test]
-    fn test_full_index_and_query_flow4l() { // NOT ANY
+    fn test_full_index_and_query_flow4l() {
+        // NOT ANY
         let test_input_dir = "correctness_test";
         let test_output_dir = "correctness_test/output4_l";
         let metadata_path = format!("{}/fof.txt", test_input_dir);
         let query_path = format!("{}/query4.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_4.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query4l_results.fa", test_output_dir);
-        func_test(&test_output_dir, &query_path, &test_input_dir, &metadata_path, &expected_output_path, &actual_output_path);
+        func_test(
+            &test_output_dir,
+            &query_path,
+            &test_input_dir,
+            &metadata_path,
+            &expected_output_path,
+            &actual_output_path,
+        );
         let _ = fs::remove_file(test_output_dir);
-
     }
     //#[test]
     fn test_full_index_and_query_flow5() {
@@ -687,8 +763,14 @@ mod tests {
         let query_path = format!("{}/query5.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_5.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query5_results.fa", test_output_dir);
-        func_test(&test_output_dir, &query_path, &test_input_dir, &metadata_path, &expected_output_path, &actual_output_path);
-
+        func_test(
+            &test_output_dir,
+            &query_path,
+            &test_input_dir,
+            &metadata_path,
+            &expected_output_path,
+            &actual_output_path,
+        );
     }
     //#[test]
     fn test_full_index_and_query_flow6() {
@@ -698,8 +780,14 @@ mod tests {
         let query_path = format!("{}/query6.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_6.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query6_results.fa", test_output_dir);
-        func_test(&test_output_dir, &query_path, &test_input_dir, &metadata_path, &expected_output_path, &actual_output_path);
-
+        func_test(
+            &test_output_dir,
+            &query_path,
+            &test_input_dir,
+            &metadata_path,
+            &expected_output_path,
+            &actual_output_path,
+        );
     }
     //#[test]
     fn test_full_index_and_query_flow7() {
@@ -709,8 +797,14 @@ mod tests {
         let query_path = format!("{}/query7.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_7.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query7_results.fa", test_output_dir);
-        func_test(&test_output_dir, &query_path, &test_input_dir, &metadata_path, &expected_output_path, &actual_output_path);
-
+        func_test(
+            &test_output_dir,
+            &query_path,
+            &test_input_dir,
+            &metadata_path,
+            &expected_output_path,
+            &actual_output_path,
+        );
     }
     //#[test]
     fn test_full_index_and_query_flow8() {
@@ -720,8 +814,14 @@ mod tests {
         let query_path = format!("{}/query8.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_8.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query8_results.fa", test_output_dir);
-        func_test(&test_output_dir, &query_path, &test_input_dir, &metadata_path, &expected_output_path, &actual_output_path);
-
+        func_test(
+            &test_output_dir,
+            &query_path,
+            &test_input_dir,
+            &metadata_path,
+            &expected_output_path,
+            &actual_output_path,
+        );
     }
     //#[test]
     fn test_full_index_and_query_flow9() {
@@ -731,8 +831,14 @@ mod tests {
         let query_path = format!("{}/query9.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_9.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query9_results.fa", test_output_dir);
-        func_test(&test_output_dir, &query_path, &test_input_dir, &metadata_path, &expected_output_path, &actual_output_path);
-
+        func_test(
+            &test_output_dir,
+            &query_path,
+            &test_input_dir,
+            &metadata_path,
+            &expected_output_path,
+            &actual_output_path,
+        );
     }
     //#[test]
     fn test_full_index_and_query_flow10() {
@@ -742,8 +848,14 @@ mod tests {
         let query_path = format!("{}/query10.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_10.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query10_results.fa", test_output_dir);
-        func_test(&test_output_dir, &query_path, &test_input_dir, &metadata_path, &expected_output_path, &actual_output_path);
-
+        func_test(
+            &test_output_dir,
+            &query_path,
+            &test_input_dir,
+            &metadata_path,
+            &expected_output_path,
+            &actual_output_path,
+        );
     }
     //#[test]
     fn test_full_index_and_query_flow11() {
@@ -753,8 +865,14 @@ mod tests {
         let query_path = format!("{}/query11.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_11.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query11_results.fa", test_output_dir);
-        func_test(&test_output_dir, &query_path, &test_input_dir, &metadata_path, &expected_output_path, &actual_output_path);
-
+        func_test(
+            &test_output_dir,
+            &query_path,
+            &test_input_dir,
+            &metadata_path,
+            &expected_output_path,
+            &actual_output_path,
+        );
     }
     //#[test]
     fn test_full_index_and_query_flow12() {
@@ -764,8 +882,14 @@ mod tests {
         let query_path = format!("{}/query12.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_12.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query12_results.fa", test_output_dir);
-        func_test(&test_output_dir, &query_path, &test_input_dir, &metadata_path, &expected_output_path, &actual_output_path);
-
+        func_test(
+            &test_output_dir,
+            &query_path,
+            &test_input_dir,
+            &metadata_path,
+            &expected_output_path,
+            &actual_output_path,
+        );
     }
     //#[test]
     fn test_full_index_and_query_flow13() {
@@ -775,8 +899,14 @@ mod tests {
         let query_path = format!("{}/query13.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_13.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query13_results.fa", test_output_dir);
-        func_test(&test_output_dir, &query_path, &test_input_dir, &metadata_path, &expected_output_path, &actual_output_path);
-
+        func_test(
+            &test_output_dir,
+            &query_path,
+            &test_input_dir,
+            &metadata_path,
+            &expected_output_path,
+            &actual_output_path,
+        );
     }
     //#[test]
     fn test_full_index_and_query_flow14() {
@@ -786,8 +916,14 @@ mod tests {
         let query_path = format!("{}/query14.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_14.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query14_results.fa", test_output_dir);
-        func_test(&test_output_dir, &query_path, &test_input_dir, &metadata_path, &expected_output_path, &actual_output_path);
-
+        func_test(
+            &test_output_dir,
+            &query_path,
+            &test_input_dir,
+            &metadata_path,
+            &expected_output_path,
+            &actual_output_path,
+        );
     }
     //#[test]
     fn test_full_index_and_query_flow15() {
@@ -797,7 +933,13 @@ mod tests {
         let query_path = format!("{}/query15.txt", test_input_dir);
         let expected_output_path = format!("{}/expected_15.fa", test_input_dir);
         let actual_output_path = format!("{}/output_query15_results.fa", test_output_dir);
-        func_test(&test_output_dir, &query_path, &test_input_dir, &metadata_path, &expected_output_path, &actual_output_path);
-
+        func_test(
+            &test_output_dir,
+            &query_path,
+            &test_input_dir,
+            &metadata_path,
+            &expected_output_path,
+            &actual_output_path,
+        );
     }
 }
