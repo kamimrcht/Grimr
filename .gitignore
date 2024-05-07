@@ -2,3 +2,4 @@ Cargo.lock
 target
 serialized_cbls
 test_printer.fa
+output*
