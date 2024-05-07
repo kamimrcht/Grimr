@@ -149,7 +149,7 @@ fn create_and_serialize_cbls(
     let to_load_values =
         select_files_to_load(&input_files, &a_cup, &b_star, &c_star, &d_cup).unwrap();
     let (to_load, indices) = to_load_values;
-    
+
     for (i, input_filename) in to_load.iter().enumerate() {
         let mut reader = parse_fastx_file(input_filename).unwrap();
         let mut cbl = CBL::<K, T>::new();
@@ -177,12 +177,11 @@ fn create_and_serialize_cbls(
     }
 }
 
-
 // deserialize a given CBL
 fn deserialize_cbl(input_filename: &str) -> CBL<K, T> {
     //let input_filename = format!("{}/{}.cbl", output_dir, input_index);
-    let index = File::open(input_filename)
-        .unwrap_or_else(|_| panic!("Failed to open {}", input_filename));
+    let index =
+        File::open(input_filename).unwrap_or_else(|_| panic!("Failed to open {}", input_filename));
     let reader = BufReader::new(index);
     DefaultOptions::new()
         .with_varint_encoding()
@@ -246,11 +245,11 @@ fn query_cbls(
     c_star: Vec<Vec<i32>>,
     d_cup: Vec<i32>,
     output_dir: &str,
-) -> io::Result<CBL<K, T>> {    
+) -> io::Result<CBL<K, T>> {
     // load cbls and build union for A cup and D cup
     let mut global_cbl = CBL::<K, T>::new();
     let mut b_star_work = b_star.clone();
-    
+
     // get all serialized cbl names in case the universe must be loaded
     let file_path = format!("{}/to_load.txt", output_dir);
     let file_toload_cbl = File::open(&file_path)?;
@@ -258,15 +257,15 @@ fn query_cbls(
     let mut cbl_files_to_load = Vec::new();
 
     for line in reader.lines() {
-		let index = line?;
+        let index = line?;
         cbl_files_to_load.push(index);
     }
-    
+
     if a_cup.is_empty() {
         if b_star.is_empty() {
             // union all
-			for index in cbl_files_to_load{
-				let loadable = format!("{}/{}.cbl", output_dir, index); 
+            for index in cbl_files_to_load {
+                let loadable = format!("{}/{}.cbl", output_dir, index);
                 let mut cbl_i = deserialize_cbl(&loadable);
                 global_cbl |= &mut cbl_i;
             }
@@ -275,13 +274,12 @@ fn query_cbls(
             b_star_work.remove(ind); // remove smallest b from b*
             let mut local_cbl = CBL::<K, T>::new();
             for (i, index) in smallest_vec_b.iter().enumerate() {
-				let input_filename = format!("{}/{}.cbl", output_dir, *index);
+                let input_filename = format!("{}/{}.cbl", output_dir, *index);
                 if i == 0 {
                     //local_cbl = deserialize_cbl(ind.try_into().unwrap(), output_dir);
                     local_cbl = deserialize_cbl(&input_filename);
                     // todo vérifier avec Florian ligne 11 algo
                 } else {
-
                     let mut cbl_b = deserialize_cbl(&input_filename);
                     local_cbl |= &mut cbl_b;
                 }
@@ -291,7 +289,7 @@ fn query_cbls(
     } else {
         let mut local_cbl = CBL::<K, T>::new();
         for (i, index) in a_cup.iter().enumerate() {
-			 let input_filename = format!("{}/{}.cbl", output_dir, *index);
+            let input_filename = format!("{}/{}.cbl", output_dir, *index);
             if i == 0 {
                 local_cbl = deserialize_cbl(&input_filename);
             } else {
@@ -308,7 +306,7 @@ fn query_cbls(
         if !c.is_empty() {
             let mut local_cbl = global_cbl.clone();
             for index in c {
-				let input_filename = format!("{}/{}.cbl", output_dir, *index);
+                let input_filename = format!("{}/{}.cbl", output_dir, *index);
                 let mut cbl_c = deserialize_cbl(&input_filename);
                 local_cbl &= &mut cbl_c;
             }
@@ -325,7 +323,7 @@ fn query_cbls(
         if !b.is_empty() {
             let mut local_cbl = CBL::<K, T>::new();
             for index in b {
-				let input_filename = format!("{}/{}.cbl", output_dir, index);
+                let input_filename = format!("{}/{}.cbl", output_dir, index);
                 let mut cbl_b = deserialize_cbl(&input_filename);
                 let mut cbl_tmp = global_cbl.clone();
                 cbl_tmp &= &mut cbl_b;
@@ -582,7 +580,8 @@ mod tests {
             c_star.clone(),
             d_cup.clone(),
             test_output_dir,
-        ).unwrap();
+        )
+        .unwrap();
         // assert!(!cbl_act.is_empty());
 
         let mut expected_content = parse_fastx_file(expected_output_path).unwrap();
