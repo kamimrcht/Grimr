@@ -6,6 +6,7 @@ use bincode::{DefaultOptions, Options};
 use cbl::kmer::Kmer;
 use cbl::CBL;
 use needletail::parse_fastx_file;
+use needletail::sequence::Sequence;
 use serde_json::from_str;
 use std::collections::HashSet;
 use std::env;
@@ -249,8 +250,10 @@ fn query_cbls(
             let all_datasets =
                 create_unique_vec(a_cup.clone(), b_star.clone(), c_star.clone(), d_cup.clone());
             for index in all_datasets {
+				println!("file {}", index);
                 let mut cbl_i = deserialize_cbl(index, output_dir);
                 global_cbl |= &mut cbl_i;
+                println!("count {}", global_cbl.count());
             }
         } else {
             let (ind, smallest_vec_b) = find_smallest_vec_and_index(&b_star_work);
@@ -284,12 +287,19 @@ fn query_cbls(
     for c in &c_star {
         //NOT ALL
         if !c.is_empty() {
+			
             let mut local_cbl = global_cbl.clone();
+                        println!("count local {}", local_cbl.count());
+
             for index in c {
+				println!(" c {}", index);
                 let mut cbl_c = deserialize_cbl(*index, output_dir);
                 local_cbl &= &mut cbl_c;
+                                        println!("count local inter {}", local_cbl.count());
+
             }
             global_cbl -= &mut local_cbl;
+            println!("count {}", global_cbl.count());
         }
     }
     for index in &d_cup {
@@ -552,7 +562,7 @@ mod tests {
             c_star.clone(),
             d_cup.clone(),
         );
-        let mut cbl_act = query_cbls(
+        let cbl_act = query_cbls(
             a_cup.clone(),
             b_star.clone(),
             c_star.clone(),
@@ -561,15 +571,35 @@ mod tests {
         );
         //assert_eq!(cbl_act.is_empty(), false);
         let mut expected_content = parse_fastx_file(expected_output_path).unwrap();
-        let mut cbl_exp = CBL::<K, T>::new();
-        while let Some(record) = expected_content.next() {
-            let seqrec = record.expect("Invalid record");
-            cbl_exp.insert_seq(&seqrec.seq());
-        }
-        cbl_act -= &mut cbl_exp;
+        
+        
+        //while let Some(record) = expected_content.next() {
+        //    let seqrec = record.expect("Invalid record");
+            //cbl_exp.insert_seq(&seqrec.seq());
+        //}
+        
+        /*let mut expected = HashSet::new();
+		while let Some(record) = expected_content.next() {
+			let seqrec = record.expect("Invalid record");
+			expected.insert(seqrec.seq().to_owned());  
+		}*/
+        let mut expected = HashSet::new();
+		while let Some(record) = expected_content.next() {
+			let seqrec = record.expect("Invalid record");
+			expected.insert(seqrec.sequence());  
+		}
+		
+		cbl_printer(&cbl_act, actual_output_path).expect("Failed to print CBL");
+
+		let mut actual_content = parse_fastx_file(actual_output_path).unwrap();
+		let mut computed = HashSet::new();
+		while let Some(record) = actual_content.next() {
+			let seqrec = record.expect("Invalid record");
+			computed.insert(seqrec.sequence());  
+		}
+
         let _ = fs::remove_file(actual_output_path);
-        cbl_printer(&cbl_act, actual_output_path).expect("Failed to print CBL"); //TODO REMOVE
-        assert!(cbl_act.is_empty());
+        assert!(computed==expected);
     }
 
     #[test]
