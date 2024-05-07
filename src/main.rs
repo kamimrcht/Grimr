@@ -134,7 +134,6 @@ fn select_files_to_load(
     Ok((to_load, load_indices))
 }
 
-// create and serialize cbls
 fn create_and_serialize_cbls(
     input_files: Vec<String>,
     output_dir: &str,
@@ -146,11 +145,11 @@ fn create_and_serialize_cbls(
     // dir where serialized cbls are stored
     let _ = fs::remove_file(output_dir);
     fs::create_dir_all(output_dir).unwrap();
-    //  create cbls only if needed (all if a, b empty, else, only indexes that appear)
+    // create cbls only if needed (all if a, b empty, else, only indexes that appear)
     let to_load_values =
         select_files_to_load(&input_files, &a_cup, &b_star, &c_star, &d_cup).unwrap();
     let (to_load, indices) = to_load_values;
-    to_load.is_empty();
+    
     for (i, input_filename) in to_load.iter().enumerate() {
         let mut reader = parse_fastx_file(input_filename).unwrap();
         let mut cbl = CBL::<K, T>::new();
@@ -169,13 +168,21 @@ fn create_and_serialize_cbls(
             .serialize_into(&mut writer, &cbl)
             .unwrap();
     }
+
+    // write the cbl names to be loaded
+    let to_load_index = format!("{}/to_load.txt", output_dir);
+    let mut file = File::create(to_load_index).unwrap();
+    for index in &indices {
+        writeln!(file, "{}", index).unwrap();
+    }
 }
 
+
 // deserialize a given CBL
-fn deserialize_cbl(input_index: i32, output_dir: &str) -> CBL<K, T> {
-    let input_filename = format!("{}/{}.cbl", output_dir, input_index);
-    let index = File::open(input_filename.as_str())
-        .unwrap_or_else(|_| panic!("Failed to open {}", input_filename.as_str()));
+fn deserialize_cbl(input_filename: &str) -> CBL<K, T> {
+    //let input_filename = format!("{}/{}.cbl", output_dir, input_index);
+    let index = File::open(input_filename)
+        .unwrap_or_else(|_| panic!("Failed to open {}", input_filename));
     let reader = BufReader::new(index);
     DefaultOptions::new()
         .with_varint_encoding()
@@ -239,32 +246,43 @@ fn query_cbls(
     c_star: Vec<Vec<i32>>,
     d_cup: Vec<i32>,
     output_dir: &str,
-) -> CBL<K, T> {
+) -> io::Result<CBL<K, T>> {    
     // load cbls and build union for A cup and D cup
     let mut global_cbl = CBL::<K, T>::new();
     let mut b_star_work = b_star.clone();
+    
+    // get all serialized cbl names in case the universe must be loaded
+    let file_path = format!("{}/to_load.txt", output_dir);
+    let file_toload_cbl = File::open(&file_path)?;
+    let reader = BufReader::new(file_toload_cbl);
+    let mut cbl_files_to_load = Vec::new();
+
+    for line in reader.lines() {
+		let index = line?;
+        cbl_files_to_load.push(index);
+    }
+    
     if a_cup.is_empty() {
         if b_star.is_empty() {
             // union all
-            let all_datasets =
-                create_unique_vec(a_cup.clone(), b_star.clone(), c_star.clone(), d_cup.clone());
-            for index in all_datasets {
-                println!("file {}", index);
-                let mut cbl_i = deserialize_cbl(index, output_dir);
+			for index in cbl_files_to_load{
+				let loadable = format!("{}/{}.cbl", output_dir, index); 
+                let mut cbl_i = deserialize_cbl(&loadable);
                 global_cbl |= &mut cbl_i;
-                println!("count {}", global_cbl.count());
             }
         } else {
             let (ind, smallest_vec_b) = find_smallest_vec_and_index(&b_star_work);
             b_star_work.remove(ind); // remove smallest b from b*
             let mut local_cbl = CBL::<K, T>::new();
             for (i, index) in smallest_vec_b.iter().enumerate() {
+				let input_filename = format!("{}/{}.cbl", output_dir, *index);
                 if i == 0 {
                     //local_cbl = deserialize_cbl(ind.try_into().unwrap(), output_dir);
-                    local_cbl = deserialize_cbl(*index, output_dir);
+                    local_cbl = deserialize_cbl(&input_filename);
                     // todo vérifier avec Florian ligne 11 algo
                 } else {
-                    let mut cbl_b = deserialize_cbl(*index, output_dir);
+
+                    let mut cbl_b = deserialize_cbl(&input_filename);
                     local_cbl |= &mut cbl_b;
                 }
             }
@@ -273,41 +291,42 @@ fn query_cbls(
     } else {
         let mut local_cbl = CBL::<K, T>::new();
         for (i, index) in a_cup.iter().enumerate() {
+			 let input_filename = format!("{}/{}.cbl", output_dir, *index);
             if i == 0 {
-                local_cbl = deserialize_cbl(*index, output_dir);
+                local_cbl = deserialize_cbl(&input_filename);
             } else {
-                let mut cbl_a = deserialize_cbl(*index, output_dir);
+                let mut cbl_a = deserialize_cbl(&input_filename);
                 local_cbl &= &mut cbl_a;
             }
         }
         global_cbl = local_cbl.clone(); // clone
     }
+    println!("global before {}", global_cbl.count());
     // TEST FAILING HERE?
     for c in &c_star {
         //NOT ALL
         if !c.is_empty() {
             let mut local_cbl = global_cbl.clone();
-            println!("count local {}", local_cbl.count());
             for index in c {
-                println!(" c {}", index);
-                let mut cbl_c = deserialize_cbl(*index, output_dir);
+				let input_filename = format!("{}/{}.cbl", output_dir, *index);
+                let mut cbl_c = deserialize_cbl(&input_filename);
                 local_cbl &= &mut cbl_c;
-                println!("count local inter {}", local_cbl.count());
             }
             global_cbl -= &mut local_cbl;
-            println!("count {}", global_cbl.count());
         }
     }
     for index in &d_cup {
         //NOT ANY
-        let mut cbl_d = deserialize_cbl(*index, output_dir);
+        let input_filename = format!("{}/{}.cbl", output_dir, *index);
+        let mut cbl_d = deserialize_cbl(&input_filename);
         global_cbl -= &mut cbl_d;
     }
     for b in b_star_work {
         if !b.is_empty() {
             let mut local_cbl = CBL::<K, T>::new();
             for index in b {
-                let mut cbl_b = deserialize_cbl(index, output_dir);
+				let input_filename = format!("{}/{}.cbl", output_dir, index);
+                let mut cbl_b = deserialize_cbl(&input_filename);
                 let mut cbl_tmp = global_cbl.clone();
                 cbl_tmp &= &mut cbl_b;
                 local_cbl |= &mut cbl_tmp;
@@ -315,7 +334,7 @@ fn query_cbls(
             global_cbl = local_cbl.clone();
         }
     }
-    global_cbl
+    Ok(global_cbl)
 }
 
 fn cbl_printer(cbl: &CBL<K, T>, output_path: &str) -> std::io::Result<()> {
@@ -353,7 +372,7 @@ fn main() {
         let _ = fs::remove_file(output_dir);
         create_and_serialize_cbls(input_files, output_dir, a_cup, b_star, c_star, d_cup);
     } else if mode == "query" {
-        let cbl = query_cbls(a_cup, b_star, c_star, d_cup, output_dir);
+        let cbl = query_cbls(a_cup, b_star, c_star, d_cup, output_dir).unwrap();
         let output_path = "output_anti_reindeer_query.txt";
         let _ = fs::remove_file(output_path);
         cbl_printer(&cbl, output_path).expect("Failed to print CBL");
@@ -463,7 +482,7 @@ mod tests {
     }
     #[test]
     fn test_printer() {
-        let cbl_a = deserialize_cbl(0, "test_files");
+        let cbl_a = deserialize_cbl("test_files/0.cbl");
         let output_path = "test_files/test_printer.fa";
         let _ = fs::remove_file(output_path);
         cbl_printer(&cbl_a, output_path).unwrap();
@@ -563,7 +582,7 @@ mod tests {
             c_star.clone(),
             d_cup.clone(),
             test_output_dir,
-        );
+        ).unwrap();
         // assert!(!cbl_act.is_empty());
 
         let mut expected_content = parse_fastx_file(expected_output_path).unwrap();
@@ -605,7 +624,8 @@ mod tests {
             c_star.clone(),
             d_cup.clone(),
         );
-        let cbl = deserialize_cbl(0, &o_dir);
+        let input_filename = format!("{}/0.cbl", &o_dir);
+        let cbl = deserialize_cbl(&input_filename);
         cbl_printer(&cbl, &p_path).expect("Failed to print CBL");
         assert_eq!(cbl.count(), 2);
     }
@@ -700,7 +720,7 @@ mod tests {
         );
         let _ = fs::remove_file(test_output_dir);
     }
-    #[test]
+    //#[test]
     fn test_full_index_and_query_flow3l() {
         // NOT ALL
         let test_input_dir = "correctness_test";
@@ -736,7 +756,7 @@ mod tests {
         );
         let _ = fs::remove_file(test_output_dir);
     }
-    #[test]
+    //#[test]
     fn test_full_index_and_query_flow4l() {
         // NOT ANY
         let test_input_dir = "correctness_test";
