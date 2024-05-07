@@ -6,7 +6,6 @@ use bincode::{DefaultOptions, Options};
 use cbl::kmer::Kmer;
 use cbl::CBL;
 use needletail::parse_fastx_file;
-use needletail::sequence::Sequence;
 use serde_json::from_str;
 use std::collections::HashSet;
 use std::env;
@@ -250,7 +249,7 @@ fn query_cbls(
             let all_datasets =
                 create_unique_vec(a_cup.clone(), b_star.clone(), c_star.clone(), d_cup.clone());
             for index in all_datasets {
-				println!("file {}", index);
+                println!("file {}", index);
                 let mut cbl_i = deserialize_cbl(index, output_dir);
                 global_cbl |= &mut cbl_i;
                 println!("count {}", global_cbl.count());
@@ -287,16 +286,13 @@ fn query_cbls(
     for c in &c_star {
         //NOT ALL
         if !c.is_empty() {
-			
             let mut local_cbl = global_cbl.clone();
-                        println!("count local {}", local_cbl.count());
-
+            println!("count local {}", local_cbl.count());
             for index in c {
-				println!(" c {}", index);
+                println!(" c {}", index);
                 let mut cbl_c = deserialize_cbl(*index, output_dir);
                 local_cbl &= &mut cbl_c;
-                                        println!("count local inter {}", local_cbl.count());
-
+                println!("count local inter {}", local_cbl.count());
             }
             global_cbl -= &mut local_cbl;
             println!("count {}", global_cbl.count());
@@ -312,8 +308,7 @@ fn query_cbls(
             let mut local_cbl = CBL::<K, T>::new();
             for index in b {
                 let mut cbl_b = deserialize_cbl(index, output_dir);
-                //let mut cbl_tmp = CBL::<K, T>::new();
-                let mut cbl_tmp = global_cbl.clone(); 
+                let mut cbl_tmp = global_cbl.clone();
                 cbl_tmp &= &mut cbl_b;
                 local_cbl |= &mut cbl_tmp;
             }
@@ -569,37 +564,27 @@ mod tests {
             d_cup.clone(),
             test_output_dir,
         );
-        //assert_eq!(cbl_act.is_empty(), false);
-        let mut expected_content = parse_fastx_file(expected_output_path).unwrap();
-        
-        
-        //while let Some(record) = expected_content.next() {
-        //    let seqrec = record.expect("Invalid record");
-            //cbl_exp.insert_seq(&seqrec.seq());
-        //}
-        
-        /*let mut expected = HashSet::new();
-		while let Some(record) = expected_content.next() {
-			let seqrec = record.expect("Invalid record");
-			expected.insert(seqrec.seq().to_owned());  
-		}*/
-        let mut expected = HashSet::new();
-		while let Some(record) = expected_content.next() {
-			let seqrec = record.expect("Invalid record");
-			expected.insert(seqrec.sequence());  
-		}
-		
-		cbl_printer(&cbl_act, actual_output_path).expect("Failed to print CBL");
+        // assert!(!cbl_act.is_empty());
 
-		let mut actual_content = parse_fastx_file(actual_output_path).unwrap();
-		let mut computed = HashSet::new();
-		while let Some(record) = actual_content.next() {
-			let seqrec = record.expect("Invalid record");
-			computed.insert(seqrec.sequence());  
-		}
+        let mut expected_content = parse_fastx_file(expected_output_path).unwrap();
+        let mut expected = HashSet::new();
+        while let Some(record) = expected_content.next() {
+            let seqrec = record.expect("Invalid record");
+            let string = String::from_utf8(seqrec.seq().to_vec()).unwrap();
+            expected.insert(string);
+        }
+        cbl_printer(&cbl_act, actual_output_path).expect("Failed to print CBL");
+
+        let mut actual_content = parse_fastx_file(actual_output_path).unwrap();
+        let mut computed = HashSet::new();
+        while let Some(record) = actual_content.next() {
+            let seqrec = record.expect("Invalid record");
+            let string = String::from_utf8(seqrec.seq().to_vec()).unwrap();
+            computed.insert(string);
+        }
 
         let _ = fs::remove_file(actual_output_path);
-        assert!(computed==expected);
+        assert_eq!(computed, expected);
     }
 
     #[test]
