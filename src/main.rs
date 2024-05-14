@@ -315,8 +315,8 @@ fn query_cbls(
             if let Some(input_filename) = input_iter.next() {
                 global_cbl = deserialize_cbl(input_filename);
             }
-            for input_filename in input_filenames {
-                global_cbl &= &mut deserialize_cbl(&input_filename);
+            for input_filename in input_iter {
+                global_cbl &= &mut deserialize_cbl(input_filename);
             }
         }
     }
@@ -325,34 +325,89 @@ fn query_cbls(
     for c in &c_star {
         //NOT ALL
         if !c.is_empty() {
-            let mut local_cbl = global_cbl.clone();
-            for index in c {
-                let input_filename = format!("{}/{}.cbl", output_dir, *index);
-                let mut cbl_c = deserialize_cbl(&input_filename);
-                local_cbl &= &mut cbl_c;
+            let input_filenames: Vec<_> = c
+                .iter()
+                .map(|index| format!("{}/{}.cbl", output_dir, index))
+                .collect();
+            if batch_size > 1 {
+                let mut input_iter = input_filenames.chunks(batch_size);
+                let mut local_cbl = if let Some(input_filename_chunk) = input_iter.next() {
+                    let mut cbls_chunk: Vec<_> = input_filename_chunk
+                        .iter()
+                        .map(|input_filename| deserialize_cbl(input_filename))
+                        .collect();
+                    CBL::<K, T>::intersect(cbls_chunk.iter_mut().collect())
+                } else {
+                    unreachable!()
+                };
+                for input_filename_chunk in input_iter {
+                    let mut cbls_chunk: Vec<_> = input_filename_chunk
+                        .iter()
+                        .map(|input_filename| deserialize_cbl(input_filename))
+                        .collect();
+                    local_cbl &= &mut CBL::<K, T>::intersect(cbls_chunk.iter_mut().collect());
+                }
+                global_cbl -= &mut local_cbl;
+            } else {
+                let mut input_iter = input_filenames.iter();
+                let mut local_cbl = if let Some(input_filename) = input_iter.next() {
+                    deserialize_cbl(input_filename)
+                } else {
+                    unreachable!()
+                };
+                for input_filename in input_iter {
+                    local_cbl &= &mut deserialize_cbl(input_filename);
+                }
+                global_cbl -= &mut local_cbl;
             }
-            global_cbl -= &mut local_cbl;
         }
     }
     for index in &d_cup {
         //NOT ANY
-        let input_filename = format!("{}/{}.cbl", output_dir, *index);
-        let mut cbl_d = deserialize_cbl(&input_filename);
-        global_cbl -= &mut cbl_d;
-        // HERE DIFF
+        let input_filename = format!("{}/{}.cbl", output_dir, index);
+        global_cbl -= &mut deserialize_cbl(&input_filename);
     }
     for b in b_star_work {
         if !b.is_empty() {
-            let mut local_cbl = CBL::<K, T>::new();
-            for index in b {
-                let input_filename = format!("{}/{}.cbl", output_dir, index);
-                let mut cbl_b = deserialize_cbl(&input_filename);
-                let mut cbl_tmp = global_cbl.clone();
-                cbl_tmp &= &mut cbl_b;
-                // HERE INTER
-                local_cbl |= &mut cbl_tmp;
+            let input_filenames: Vec<_> = b
+                .iter()
+                .map(|index| format!("{}/{}.cbl", output_dir, index))
+                .collect();
+            if batch_size > 1 {
+                let mut input_iter = input_filenames.chunks(batch_size);
+                let mut local_cbl = if let Some(input_filename_chunk) = input_iter.next() {
+                    let mut cbls_chunk: Vec<_> = input_filename_chunk
+                        .iter()
+                        .map(|input_filename| {
+                            &mut global_cbl & &mut deserialize_cbl(input_filename)
+                        })
+                        .collect();
+                    CBL::<K, T>::merge(cbls_chunk.iter_mut().collect())
+                } else {
+                    unreachable!()
+                };
+                for input_filename_chunk in input_iter {
+                    let mut cbls_chunk: Vec<_> = input_filename_chunk
+                        .iter()
+                        .map(|input_filename| {
+                            &mut global_cbl & &mut deserialize_cbl(input_filename)
+                        })
+                        .collect();
+                    local_cbl |= &mut CBL::<K, T>::merge(cbls_chunk.iter_mut().collect());
+                }
+                global_cbl = local_cbl;
+            } else {
+                let mut input_iter = input_filenames.iter();
+                let mut local_cbl = if let Some(input_filename) = input_iter.next() {
+                    &mut global_cbl & &mut deserialize_cbl(input_filename)
+                } else {
+                    unreachable!()
+                };
+                for input_filename in input_iter {
+                    local_cbl |= &mut (&mut global_cbl & &mut deserialize_cbl(input_filename));
+                }
+                global_cbl = local_cbl;
             }
-            global_cbl = local_cbl.clone();
         }
     }
     Ok(global_cbl)
