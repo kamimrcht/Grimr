@@ -199,7 +199,7 @@ fn find_smallest_vec_and_index(list_of_vecs: &[Vec<i32>]) -> (usize, Vec<i32>) {
     for (index, vec) in list_of_vecs.iter().enumerate() {
         if !vec.is_empty() && vec.len() < smallest_len {
             smallest_index = index;
-            smallest_vec = vec.clone();
+            smallest_vec.clone_from(vec);
             smallest_len = vec.len();
         }
     }
@@ -245,6 +245,7 @@ fn query_cbls(
     c_star: Vec<Vec<i32>>,
     d_cup: Vec<i32>,
     output_dir: &str,
+    batch_size: usize,
 ) -> io::Result<CBL<K, T>> {
     // load cbls and build union for A cup and D cup
     let mut global_cbl = CBL::<K, T>::new();
@@ -252,7 +253,7 @@ fn query_cbls(
 
     // get all serialized cbl names in case the universe must be loaded
     let file_path = format!("{}/to_load.txt", output_dir);
-    let file_toload_cbl = File::open(&file_path)?;
+    let file_toload_cbl = File::open(file_path)?;
     let reader = BufReader::new(file_toload_cbl);
     let mut cbl_files_to_load = Vec::new();
 
@@ -262,42 +263,62 @@ fn query_cbls(
     }
 
     if a_cup.is_empty() {
-        if b_star.is_empty() {
-            // union all
-            for index in cbl_files_to_load {
-                let loadable = format!("{}/{}.cbl", output_dir, index);
-                let mut cbl_i = deserialize_cbl(&loadable);
-                global_cbl |= &mut cbl_i;
-            }
+        let input_filenames: Vec<_> = if b_star.is_empty() {
+            cbl_files_to_load
+                .iter()
+                .map(|index| format!("{}/{}.cbl", output_dir, index))
+                .collect()
         } else {
             let (ind, smallest_vec_b) = find_smallest_vec_and_index(&b_star_work);
             b_star_work.remove(ind); // remove smallest b from b*
-            let mut local_cbl = CBL::<K, T>::new();
-            for (i, index) in smallest_vec_b.iter().enumerate() {
-                let input_filename = format!("{}/{}.cbl", output_dir, *index);
-                if i == 0 {
-                    //local_cbl = deserialize_cbl(ind.try_into().unwrap(), output_dir);
-                    local_cbl = deserialize_cbl(&input_filename);
-                    // todo vérifier avec Florian ligne 11 algo
-                } else {
-                    let mut cbl_b = deserialize_cbl(&input_filename);
-                    local_cbl |= &mut cbl_b;
-                }
+            smallest_vec_b
+                .iter()
+                .map(|index| format!("{}/{}.cbl", output_dir, index))
+                .collect()
+        };
+        if batch_size > 1 {
+            for input_filename_chunk in input_filenames.chunks(batch_size) {
+                let mut cbls_chunk: Vec<_> = input_filename_chunk
+                    .iter()
+                    .map(|input_filename| deserialize_cbl(input_filename))
+                    .collect();
+                global_cbl |= &mut CBL::<K, T>::merge(cbls_chunk.iter_mut().collect());
             }
-            global_cbl = local_cbl.clone(); // clone
+        } else {
+            for input_filename in input_filenames {
+                global_cbl |= &mut deserialize_cbl(&input_filename);
+            }
         }
     } else {
-        let mut local_cbl = CBL::<K, T>::new();
-        for (i, index) in a_cup.iter().enumerate() {
-            let input_filename = format!("{}/{}.cbl", output_dir, *index);
-            if i == 0 {
-                local_cbl = deserialize_cbl(&input_filename);
-            } else {
-                let mut cbl_a = deserialize_cbl(&input_filename);
-                local_cbl &= &mut cbl_a;
+        let input_filenames: Vec<_> = a_cup
+            .iter()
+            .map(|index| format!("{}/{}.cbl", output_dir, index))
+            .collect();
+        if batch_size > 1 {
+            let mut input_iter = input_filenames.chunks(batch_size);
+            if let Some(input_filename_chunk) = input_iter.next() {
+                let mut cbls_chunk: Vec<_> = input_filename_chunk
+                    .iter()
+                    .map(|input_filename| deserialize_cbl(input_filename))
+                    .collect();
+                global_cbl = CBL::<K, T>::intersect(cbls_chunk.iter_mut().collect());
+            }
+            for input_filename_chunk in input_iter {
+                let mut cbls_chunk: Vec<_> = input_filename_chunk
+                    .iter()
+                    .map(|input_filename| deserialize_cbl(input_filename))
+                    .collect();
+                global_cbl &= &mut CBL::<K, T>::intersect(cbls_chunk.iter_mut().collect());
+            }
+        } else {
+            let mut input_iter = input_filenames.iter();
+            if let Some(input_filename) = input_iter.next() {
+                global_cbl = deserialize_cbl(input_filename);
+            }
+            for input_filename in input_filenames {
+                global_cbl &= &mut deserialize_cbl(&input_filename);
             }
         }
-        global_cbl = local_cbl.clone(); // clone
     }
     println!("global before {}", global_cbl.count());
     // TEST FAILING HERE?
@@ -318,6 +339,7 @@ fn query_cbls(
         let input_filename = format!("{}/{}.cbl", output_dir, *index);
         let mut cbl_d = deserialize_cbl(&input_filename);
         global_cbl -= &mut cbl_d;
+        // HERE DIFF
     }
     for b in b_star_work {
         if !b.is_empty() {
@@ -327,6 +349,7 @@ fn query_cbls(
                 let mut cbl_b = deserialize_cbl(&input_filename);
                 let mut cbl_tmp = global_cbl.clone();
                 cbl_tmp &= &mut cbl_b;
+                // HERE INTER
                 local_cbl |= &mut cbl_tmp;
             }
             global_cbl = local_cbl.clone();
@@ -370,7 +393,7 @@ fn main() {
         let _ = fs::remove_file(output_dir);
         create_and_serialize_cbls(input_files, output_dir, a_cup, b_star, c_star, d_cup);
     } else if mode == "query" {
-        let cbl = query_cbls(a_cup, b_star, c_star, d_cup, output_dir).unwrap();
+        let cbl = query_cbls(a_cup, b_star, c_star, d_cup, output_dir, 4).unwrap();
         let output_path = "output_anti_reindeer_query.txt";
         let _ = fs::remove_file(output_path);
         cbl_printer(&cbl, output_path).expect("Failed to print CBL");
@@ -580,6 +603,7 @@ mod tests {
             c_star.clone(),
             d_cup.clone(),
             test_output_dir,
+            4,
         )
         .unwrap();
         // assert!(!cbl_act.is_empty());
