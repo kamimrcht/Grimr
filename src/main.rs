@@ -248,7 +248,7 @@ fn query_cbls(
     batch_size: usize,
 ) -> io::Result<CBL<K, T>> {
     // load cbls and build union for A cup and D cup
-    let mut global_cbl = CBL::<K, T>::new();
+    let mut global_cbl;
     let mut b_star_work = b_star.clone();
 
     // get all serialized cbl names in case the universe must be loaded
@@ -277,7 +277,17 @@ fn query_cbls(
                 .collect()
         };
         if batch_size > 1 {
-            for input_filename_chunk in input_filenames.chunks(batch_size) {
+            let mut input_iter = input_filenames.chunks(batch_size);
+            global_cbl = if let Some(input_filename_chunk) = input_iter.next() {
+                let mut cbls_chunk: Vec<_> = input_filename_chunk
+                    .iter()
+                    .map(|input_filename| deserialize_cbl(input_filename))
+                    .collect();
+                CBL::<K, T>::merge(cbls_chunk.iter_mut().collect())
+            } else {
+                unreachable!()
+            };
+            for input_filename_chunk in input_iter {
                 let mut cbls_chunk: Vec<_> = input_filename_chunk
                     .iter()
                     .map(|input_filename| deserialize_cbl(input_filename))
@@ -285,8 +295,14 @@ fn query_cbls(
                 global_cbl |= &mut CBL::<K, T>::merge(cbls_chunk.iter_mut().collect());
             }
         } else {
-            for input_filename in input_filenames {
-                global_cbl |= &mut deserialize_cbl(&input_filename);
+            let mut input_iter = input_filenames.iter();
+            global_cbl = if let Some(input_filename) = input_iter.next() {
+                deserialize_cbl(input_filename)
+            } else {
+                unreachable!()
+            };
+            for input_filename in input_iter {
+                global_cbl |= &mut deserialize_cbl(input_filename);
             }
         }
     } else {
@@ -296,13 +312,15 @@ fn query_cbls(
             .collect();
         if batch_size > 1 {
             let mut input_iter = input_filenames.chunks(batch_size);
-            if let Some(input_filename_chunk) = input_iter.next() {
+            global_cbl = if let Some(input_filename_chunk) = input_iter.next() {
                 let mut cbls_chunk: Vec<_> = input_filename_chunk
                     .iter()
                     .map(|input_filename| deserialize_cbl(input_filename))
                     .collect();
-                global_cbl = CBL::<K, T>::intersect(cbls_chunk.iter_mut().collect());
-            }
+                CBL::<K, T>::intersect(cbls_chunk.iter_mut().collect())
+            } else {
+                unreachable!()
+            };
             for input_filename_chunk in input_iter {
                 let mut cbls_chunk: Vec<_> = input_filename_chunk
                     .iter()
@@ -312,9 +330,11 @@ fn query_cbls(
             }
         } else {
             let mut input_iter = input_filenames.iter();
-            if let Some(input_filename) = input_iter.next() {
-                global_cbl = deserialize_cbl(input_filename);
-            }
+            global_cbl = if let Some(input_filename) = input_iter.next() {
+                deserialize_cbl(input_filename)
+            } else {
+                unreachable!()
+            };
             for input_filename in input_iter {
                 global_cbl &= &mut deserialize_cbl(input_filename);
             }
