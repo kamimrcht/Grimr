@@ -2,16 +2,16 @@
 #![feature(generic_const_exprs)]
 #![allow(clippy::type_complexity)]
 
+mod utils;
 use bincode::{DefaultOptions, Options};
-use cbl::kmer::Kmer;
 use cbl::CBL;
-use needletail::parse_fastx_file;
 use serde_json::from_str;
 use std::collections::HashSet;
 use std::env;
 use std::fs::{self, File};
 use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
+use utils::{cbl_printer, create_cbl_from_fasta, deserialize_cbl, serialize_cbl};
 
 type T = u64;
 const K: usize = 21;
@@ -134,62 +134,6 @@ fn select_files_to_load(
     Ok((to_load, load_indices))
 }
 
-fn create_and_serialize_cbls(
-    input_files: Vec<String>,
-    output_dir: &str,
-    a_cup: Vec<i32>,
-    b_star: Vec<Vec<i32>>,
-    c_star: Vec<Vec<i32>>,
-    d_cup: Vec<i32>,
-) {
-    // dir where serialized cbls are stored
-    let _ = fs::remove_file(output_dir);
-    fs::create_dir_all(output_dir).unwrap();
-    // create cbls only if needed (all if a, b empty, else, only indexes that appear)
-    let to_load_values =
-        select_files_to_load(&input_files, &a_cup, &b_star, &c_star, &d_cup).unwrap();
-    let (to_load, indices) = to_load_values;
-
-    for (i, input_filename) in to_load.iter().enumerate() {
-        let mut reader = parse_fastx_file(input_filename).unwrap();
-        let mut cbl = CBL::<K, T>::new();
-        while let Some(record) = reader.next() {
-            let seqrec = record.expect("Invalid record");
-            cbl.insert_seq(&seqrec.seq());
-        }
-        // serialize the cbl and save it to a file
-        let output_filename = format!("{}/{}.cbl", output_dir, indices[i]);
-        let _ = fs::remove_file(&output_filename);
-        let output = File::create(output_filename).unwrap();
-        let mut writer = BufWriter::new(output);
-        DefaultOptions::new()
-            .with_varint_encoding()
-            .reject_trailing_bytes()
-            .serialize_into(&mut writer, &cbl)
-            .unwrap();
-    }
-
-    // write the cbl names to be loaded
-    let to_load_index = format!("{}/to_load.txt", output_dir);
-    let mut file = File::create(to_load_index).unwrap();
-    for index in &indices {
-        writeln!(file, "{}", index).unwrap();
-    }
-}
-
-// deserialize a given CBL
-fn deserialize_cbl(input_filename: &str) -> CBL<K, T> {
-    //let input_filename = format!("{}/{}.cbl", output_dir, input_index);
-    let index =
-        File::open(input_filename).unwrap_or_else(|_| panic!("Failed to open {}", input_filename));
-    let reader = BufReader::new(index);
-    DefaultOptions::new()
-        .with_varint_encoding()
-        .reject_trailing_bytes()
-        .deserialize_from(reader)
-        .unwrap()
-}
-
 // smallest vec for b_star
 fn find_smallest_vec_and_index(list_of_vecs: &[Vec<i32>]) -> (usize, Vec<i32>) {
     let mut smallest_index = 0;
@@ -237,6 +181,37 @@ fn create_unique_vec(
     }
     let result: Vec<i32> = set.into_iter().collect();
     result
+}
+
+fn create_and_serialize_cbls(
+    input_files: Vec<String>,
+    output_dir: &str,
+    a_cup: Vec<i32>,
+    b_star: Vec<Vec<i32>>,
+    c_star: Vec<Vec<i32>>,
+    d_cup: Vec<i32>,
+) {
+    // dir where serialized cbls are stored
+    let _ = fs::remove_file(output_dir);
+    fs::create_dir_all(output_dir).unwrap();
+    // create cbls only if needed (all if a, b empty, else, only indexes that appear)
+    let to_load_values =
+        select_files_to_load(&input_files, &a_cup, &b_star, &c_star, &d_cup).unwrap();
+    let (to_load, indices) = to_load_values;
+
+    for (i, input_filename) in to_load.iter().enumerate() {
+        let cbl = create_cbl_from_fasta(input_filename);
+        // serialize the cbl and save it to a file
+        let output_filename = format!("{}/{}.cbl", output_dir, indices[i]);
+        serialize_cbl(&cbl, &output_filename);
+    }
+
+    // write the cbl names to be loaded
+    let to_load_index = format!("{}/to_load.txt", output_dir);
+    let mut file = File::create(to_load_index).unwrap();
+    for index in &indices {
+        writeln!(file, "{}", index).unwrap();
+    }
 }
 
 fn query_cbls(
@@ -433,21 +408,6 @@ fn query_cbls(
     Ok(global_cbl)
 }
 
-fn cbl_printer(cbl: &CBL<K, T>, output_path: &str) -> std::io::Result<()> {
-    if cbl.is_empty() {
-        println!("Empty solution.");
-        return Ok(());
-    }
-    let file = File::create(output_path)?;
-    let mut writer = BufWriter::new(file);
-    for (index, kmer) in cbl.iter().enumerate() {
-        writeln!(writer, ">kmer{}", index)?;
-        writer.write_all(&kmer.to_nucs())?;
-        writer.write_all(b"\n")?;
-    }
-    Ok(())
-}
-
 fn main() {
     // parse args
     let args: Vec<String> = env::args().collect();
@@ -477,6 +437,8 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
+    use needletail::parse_fastx_file;
+
     use super::*;
 
     #[test]
