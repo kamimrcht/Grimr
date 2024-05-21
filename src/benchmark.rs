@@ -89,7 +89,28 @@ fn intersect_cbls_in_batches(file_paths: &[String], batch_size: usize) -> CBL<K,
     global_cbl
 }
 
+fn difference_cbls_in_batches(global_cbl: &mut CBL<K, T>, input_filenames: &[String], batch_size: usize) {
+        let mut input_iter = input_filenames.chunks(batch_size);
+        let mut local_cbl = if let Some(input_filename_chunk) = input_iter.next() {
+            let mut cbls_chunk: Vec<_> = input_filename_chunk
+                .iter()
+                .map(|input_filename| deserialize_cbl(input_filename))
+                .collect();
+            CBL::<K, T>::intersect(cbls_chunk.iter_mut().collect())
+        } else {
+            unreachable!()
+        };
 
+        for input_filename_chunk in input_iter {
+            let mut cbls_chunk: Vec<_> = input_filename_chunk
+                .iter()
+                .map(|input_filename| deserialize_cbl(input_filename))
+                .collect();
+            local_cbl &= &mut CBL::<K, T>::intersect(cbls_chunk.iter_mut().collect());
+        }
+
+        *global_cbl -= &mut local_cbl;
+}
 
 fn write_csv<T: Serialize>(data: &[T], filename: &str) -> io::Result<()> {
     let mut wtr = csv::Writer::from_path(filename)?;
@@ -111,8 +132,8 @@ fn main() {
     let max_batch_size: usize = args[3].parse().expect("Max batch size must be a number");
     let do_deserialize = args.get(4).map_or(false, |arg| arg == "deser");
 
-    if mode != "union" && mode != "intersection" {
-        eprintln!("Invalid mode. Use 'union' or 'intersection'.");
+    if mode != "union" && mode != "intersection" && mode != "difference" {
+        eprintln!("Invalid mode. Use 'union', 'intersection', or 'difference'.");
         std::process::exit(1);
     }
 
@@ -164,10 +185,15 @@ fn main() {
     for batch_size in 1..=max_batch_size {
         println!("Testing batch size {}", batch_size);
         let start = Instant::now();
-        let result_cbl = if mode == "union" {
-            merge_cbls_in_batches(&file_paths, batch_size)
-        } else {
-            intersect_cbls_in_batches(&file_paths, batch_size)
+        let result_cbl = match mode.as_str() {
+            "union" => merge_cbls_in_batches(&file_paths, batch_size),
+            "intersection" => intersect_cbls_in_batches(&file_paths, batch_size),
+            "difference" => {
+                let mut global_cbl = total_kmer_cbl.clone();
+                difference_cbls_in_batches(&mut global_cbl, &file_paths, batch_size);
+                global_cbl
+            }
+            _ => unreachable!(),
         };
         let duration = start.elapsed();
         let duration_secs = duration.as_secs_f64();
