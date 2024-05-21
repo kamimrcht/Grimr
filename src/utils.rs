@@ -61,8 +61,7 @@ pub fn cbl_printer(cbl: &CBL<K, T>, output_path: &str) -> std::io::Result<()> {
     Ok(())
 }
 
-pub // reads fastas from a file of file (csv), only needed files are processed
-fn read_fof_file_csv(file_path: &str) -> io::Result<(Vec<String>, usize)> {
+pub fn read_fof_file_csv(file_path: &str) -> io::Result<(Vec<String>, usize)> {
     let file = File::open(file_path)?;
     let reader = BufReader::new(file);
     let mut file_paths = Vec::new();
