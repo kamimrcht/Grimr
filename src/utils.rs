@@ -6,7 +6,8 @@ use cbl::kmer::Kmer;
 use cbl::CBL;
 use needletail::parse_fastx_file;
 use std::fs::{self, File};
-use std::io::{BufReader, BufWriter, Write};
+use std::io;
+use std::io::{BufRead, BufReader, BufWriter, Write};
 
 type T = u64;
 const K: usize = 21;
@@ -58,4 +59,22 @@ pub fn cbl_printer(cbl: &CBL<K, T>, output_path: &str) -> std::io::Result<()> {
         writer.write_all(b"\n")?;
     }
     Ok(())
+}
+
+pub // reads fastas from a file of file (csv), only needed files are processed
+fn read_fof_file_csv(file_path: &str) -> io::Result<(Vec<String>, usize)> {
+    let file = File::open(file_path)?;
+    let reader = BufReader::new(file);
+    let mut file_paths = Vec::new();
+    let mut color_number = 0;
+
+    for line in reader.lines() {
+        let line = line?;
+        if let Some(first_column) = line.split_whitespace().next() {
+            file_paths.push(first_column.to_string());
+            color_number += 1;
+        }
+    }
+
+    Ok((file_paths, color_number))
 }

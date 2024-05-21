@@ -11,7 +11,7 @@ use std::env;
 use std::fs::{self, File};
 use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
-use utils::{cbl_printer, create_cbl_from_fasta, deserialize_cbl, serialize_cbl};
+use utils::{cbl_printer, create_cbl_from_fasta, deserialize_cbl, serialize_cbl, read_fof_file_csv};
 
 type T = u64;
 const K: usize = 21;
@@ -70,23 +70,7 @@ fn parse_label_file<P: AsRef<Path>>(
     Ok((vec_all, vec_any, vec_not_all, vec_not_any))
 }
 
-// reads fastas from a file of file (csv), only needed files are processed
-fn read_fof_file_csv(file_path: &str) -> io::Result<(Vec<String>, usize)> {
-    let file = File::open(file_path)?;
-    let reader = BufReader::new(file);
-    let mut file_paths = Vec::new();
-    let mut color_number = 0;
 
-    for line in reader.lines() {
-        let line = line?;
-        if let Some(first_column) = line.split_whitespace().next() {
-            file_paths.push(first_column.to_string());
-            color_number += 1;
-        }
-    }
-
-    Ok((file_paths, color_number))
-}
 
 // select files necessary to load in cbls and serialize
 fn select_files_to_load(
@@ -1030,4 +1014,6 @@ mod tests {
             &actual_output_path,
         );
     }
+    
+  
 }
