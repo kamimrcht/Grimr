@@ -53,11 +53,13 @@ fn intersect_cbls_in_batches(file_paths: &[String], batch_size: usize) -> CBL<K,
             .iter()
             .map(|input_filename| deserialize_cbl(input_filename))
             .collect();
-        global_cbl |= &mut CBL::<K, T>::merge(cbls_chunk.iter_mut().collect());
+        global_cbl &= &mut CBL::<K, T>::intersect(cbls_chunk.iter_mut().collect());
     }
 
     global_cbl
 }
+
+
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -92,11 +94,14 @@ fn main() {
         let output_file_path = Path::new(&output_filename);
         if !output_file_path.exists() {
             let cbl = create_cbl_from_fasta(input_filename);
+            let start_serialize = Instant::now();
             serialize_cbl(&cbl, &output_filename);
-            println!("- created CBL for file: {}", input_filename);
+            let duration_serialize = start_serialize.elapsed();
+            println!("Created CBL for file: {} in {:?}", input_filename, duration_serialize);
         } else {
             println!("CBL already exists for file: {}", input_filename);
         }
+
         file_paths.push(output_filename);
     }
     let cbl = merge_cbls_in_batches(&file_paths, batch_size);
@@ -112,7 +117,7 @@ fn main() {
             println!("Time taken for union of batch size {}: {:?}", bs, duration);
             let duration_secs = duration.as_secs_f64();
             let kmer_per_sec = kmer_total as f64 / duration_secs;
-            println! {"Handled {} k-mers per second: ", kmer_per_sec}
+            println! {"K-mers per second: {}", kmer_per_sec}
             println!("Total number of k-mers in result: {}", merged_cbl.count());
         } else if mode == "intersection" {
             let start = Instant::now();
@@ -123,8 +128,8 @@ fn main() {
                 bs, duration
             );
             let duration_secs = duration.as_secs_f64();
-            let kmer_per_sec = inter_cbl.count() as f64 / duration_secs;
-            println! {"Handled {} k-mers per second: ", kmer_per_sec}
+            let kmer_per_sec = kmer_total as f64 / duration_secs;
+            println! {"K-mers per second: {} ", kmer_per_sec}
             println!("Total number of k-mers in result: {}", inter_cbl.count());
         }
     }
