@@ -299,8 +299,7 @@ fn query_cbls(
             }
         }
     }
-    println!("global before {}", global_cbl.count());
-    // TEST FAILING HERE?
+
     for c in &c_star {
         //NOT ALL
         if !c.is_empty() {
