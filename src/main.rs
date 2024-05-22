@@ -11,6 +11,7 @@ use std::env;
 use std::fs::{self, File};
 use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
+use std::path::PathBuf;
 use utils::{
     cbl_printer, create_cbl_from_fasta, deserialize_cbl, read_fof_file_csv, serialize_cbl,
 };
@@ -394,27 +395,41 @@ fn query_cbls(
 fn main() {
     // parse args
     let args: Vec<String> = env::args().collect();
-    if args.len() < 4 {
-        eprintln!("Usage: {} <mode> <input_metadata>", args[0]);
+    if args.len() < 4 || args.len() > 5 {
+        eprintln!(
+            "Usage: {} <mode> <input_metadata> <label_file> [<output_dir>]",
+            args[0]
+        );
         std::process::exit(1);
     }
     let mode = args[1].clone();
     let input_file_list = args[2].clone();
     let label_file_list = args[3].clone();
-    let output_dir = "serialized_cbls";
+    let output_dir = if args.len() == 5 {
+        args[4].clone()
+    } else {
+        "serialized_cbls".to_string()
+    };
     let labels = parse_label_file(label_file_list).unwrap(); //todo test
     let (a_cup, b_star, c_star, d_cup) = labels;
     if mode == "index" {
         // read the fof
         let (input_files, _col_nb) = read_fof_file_csv(&input_file_list).unwrap(); // use of col_nb?
                                                                                    // create and serialize CBLs
-        let _ = fs::remove_file(output_dir);
-        create_and_serialize_cbls(input_files, output_dir, a_cup, b_star, c_star, d_cup);
+        if !Path::new(&output_dir).exists() {
+            create_and_serialize_cbls(input_files, &output_dir, a_cup, b_star, c_star, d_cup);
+        } else {
+            println!(
+                "Output directory '{}' already exists, skipping creation of CBLs.",
+                output_dir
+            );
+        }
     } else if mode == "query" {
-        let cbl = query_cbls(a_cup, b_star, c_star, d_cup, output_dir, 4).unwrap();
-        let output_path = "output_anti_reindeer_query.txt";
-        let _ = fs::remove_file(output_path);
-        cbl_printer(&cbl, output_path).expect("Failed to print CBL");
+        let cbl = query_cbls(a_cup, b_star, c_star, d_cup, &output_dir, 4).unwrap();
+        let output_path = PathBuf::from(&output_dir).join("output_anti_reindeer_query.txt");
+        let _ = fs::remove_file(&output_path);
+        cbl_printer(&cbl, output_path.to_str().unwrap()).expect("Failed to print CBL");
+        println!("Query results written to: {}", output_path.display());
     }
 }
 
