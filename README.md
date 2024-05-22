@@ -23,7 +23,7 @@ python label_editor.py
 
 This will generate a pickle file containing a dictionary associating each tag to its list of indexes of references, as well as a `map.txt` file containing the association between the indexes and the references themselves (in the same order as the metadate file).
 
-Then, in `query_builder.py`, after line 62, write your query using pre-existing tags. Teh run the script or use command line:
+Then, in `query_builder.py`, after line 62, write your query using pre-existing tags. Then run the script or use command line:
 
 ```sh
 python query_builder.py
