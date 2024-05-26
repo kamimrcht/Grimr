@@ -1,8 +1,8 @@
-# anti reindeer
+# Grimr
 
 ```sh
-git clone https://github.com/kamimrcht/anti_reindeer.git
-cd anti_reindeer
+git clone https://github.com/kamimrcht/Grimr.git
+cd Grimr
 ```
 
 Install Rust nightly: [rustup.rs](https://rustup.rs/) then `rustup install nightly`.
